@@ -2,28 +2,30 @@ import os
 import requests
 from typing import List, Dict
 
-# Load creds from env variables (see .env sample for needed creds)
-TWITCH_CLIENT_ID = os.getenv("TWITCH_CLIENT_ID")
-TWITCH_CLIENT_SECRET = os.getenv("TWITCH_CLIENT_SECRET")
-
 # Auth with Twitch API to get access token for IGDB requests
 # For debugging: raises runtime error is token cannot be retrieved
 
 def get_igdb_access_token() -> str:
+    client_id = os.getenv('TWITCH_CLIENT_ID')
+    client_secret = os.getenv('TWITCH_CLIENT_SECRET')
+
+    if not client_id or not client_secret:
+        raise RuntimeError("Twitch Client ID or Secret not set in environment variables.")
+
     url = "https://id.twitch.tv/oauth2/token"
     payload = {
-        'client_id': TWITCH_CLIENT_ID,
-        'client_secret': TWITCH_CLIENT_SECRET,
+        'client_id': client_id,  
+        'client_secret': client_secret,  
         'grant_type': 'client_credentials'
     }
-    
+
     response = requests.post(url, data=payload)
     response.raise_for_status()
-    
+
     access_token = response.json().get('access_token')
     if not access_token:
         raise RuntimeError("Failed to retrieve IGDB access token")
-    
+
     return access_token
 
 
@@ -36,7 +38,7 @@ def query_igdb_games(genre_ids: List[int], platform_id: List[int], limit: int = 
 
     url = "https://api.igdb.com/v4/games"
     headers = {
-        'Client-ID': TWITCH_CLIENT_ID,
+        'Client-ID': os.getenv('TWITCH_CLIENT_ID'),
         'Authorization': f'Bearer {access_token}'
     }
     
