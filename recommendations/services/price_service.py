@@ -11,7 +11,7 @@ def get_plain_id(game_title: str) -> Optional[str]: # Function to get plain ID f
     if not api_key:
         raise RuntimeError("ITAD API key not found in environment variables")
     
-    url = f"{base_url}/v02/search/search/"
+    url = f"{base_url}/lookup/id/title/v1"
     params = {
         "key": api_key,
         "q": game_title,
@@ -35,7 +35,7 @@ def get_game_price(plain_id: str) -> Optional[Dict]:
     if not api_key:
         raise RuntimeError("ITAD API key not found in environment variables")
     
-    url = f"{base_url}/v01/game/prices/"
+    url = f"{base_url}/games/prices/v3"
     params = {
         "key": api_key,
         "plains": plain_id,
