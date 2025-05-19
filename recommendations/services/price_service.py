@@ -6,7 +6,7 @@ from typing import Optional, Dict
 
 def get_plain_id(game_title: str) -> Optional[str]: # Function to get plain ID for game title, using ITAD's search endpoint
     api_key = os.getenv("ITAD_API_KEY")
-    base_url = "https://api.isthereanydeal.coml"
+    base_url = "https://api.isthereanydeal.com"
     
     if not api_key:
         raise RuntimeError("ITAD API key not found in environment variables")
