@@ -6,7 +6,7 @@ from typing import List, Dict
 # For debugging: raises runtime error is token cannot be retrieved
 
 def get_igdb_access_token() -> str:
-    client_id = os.getenv('TWITCH_CLIENT_ID')
+    client_id = os.getenv('TWITCH_CLIENT_ID') # Lazy loading for efficiency and to prevent errors
     client_secret = os.getenv('TWITCH_CLIENT_SECRET')
 
     if not client_id or not client_secret:

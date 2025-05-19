@@ -5,9 +5,12 @@ from rest_framework.response import Response
 from rest_framework import status
 from .services.igdb_service import query_igdb_games
 from .services.genre_service import fetch_igdb_genres
+from .services.price_service import get_game_price, get_plain_id
+
+
 
 #API view to handle Post requests
-# Needs JSON payload with 'genres' (IDs), platform (ID), and 'budget' (used later!).
+# Needs JSON payload with 'genres' (IDs), platform (ID), and 'budget' (enriched using ITAD price data)
 class GameRecommendationView(APIView): # Configure Swagger for input first
     @swagger_auto_schema(
         request_body=openapi.Schema(
@@ -29,7 +32,7 @@ class GameRecommendationView(APIView): # Configure Swagger for input first
     def post(self, request): #extract data from payload
         genre_ids = request.data.get('genres')
         platform_id = request.data.get('platform')
-        budget = request.data.get('budget') #price filtering for later
+        budget = request.data.get('budget') #price filtering
         
         # Input validation
         if not genre_ids or not platform_id or budget is None:
@@ -38,10 +41,41 @@ class GameRecommendationView(APIView): # Configure Swagger for input first
                 status=status.HTTP_400_BAD_REQUEST
             )
             
-        # Query IGDB for matching games
+        # First, query IGDB for matching games
         try:
             games = query_igdb_games(genre_ids, platform_id)
-            return Response(games, status=status.HTTP_200_OK)
+            
+            enriched_games = []
+            for game in games:
+                title = game.get("title")
+                plain_id = get_plain_id(title)
+                price_info = get_game_price(plain_id) if plain_id else None
+                
+                if price_info and "list" in price_info and price_info["list"]:
+                    # Take first price offer, assuming it's the best (it usually is)
+                    best_offer = price_info["list"][0]
+                    price_new = best_offer.get("price_new")
+                    discount_pct = best_offer.get("price_cut")
+                    currency = "GBP" #Can be changed if using elsewhere
+                    
+                    game["price"] = {
+                        "price": price_new,
+                        "store": best_offer.get("shop", {}).get("name"),
+                        "discount": f"This game's price is ${price_new:.2f} after {discount_pct}% discount" if price_new and discount_pct else None,
+                        "currency": currency,
+                        "url": best_offer.get("url"),
+                    }
+                else:
+                    game["price"] = {
+                        "price": None,
+                        "store": None,
+                        "discount": None,
+                        "url": None,
+                    }
+                    
+                enriched_games.append(game)
+            
+            return Response(enriched_games, status=status.HTTP_200_OK)
         
         # Catch errors
         except Exception as e:
