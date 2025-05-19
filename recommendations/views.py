@@ -4,6 +4,7 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 from .services.igdb_service import query_igdb_games
+from .services.genre_service import fetch_igdb_genres
 
 #API view to handle Post requests
 # Needs JSON payload with 'genres' (IDs), platform (ID), and 'budget' (used later!).
@@ -43,6 +44,22 @@ class GameRecommendationView(APIView): # Configure Swagger for input first
             return Response(games, status=status.HTTP_200_OK)
         
         # Catch errors
+        except Exception as e:
+            return Response(
+                {"error": str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+            
+# Return a list of genre IDs and names from IGDB API
+class GenreListView(APIView):#
+    @swagger_auto_schema(
+        operation_description="Retrieve IGDB genres",
+        responses={200: "List of genres"}
+    )
+    def get(self, request):
+        try:
+            genres = fetch_igdb_genres()
+            return Response(genres, status=status.HTTP_200_OK)
         except Exception as e:
             return Response(
                 {"error": str(e)},
