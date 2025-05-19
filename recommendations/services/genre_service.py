@@ -1,6 +1,10 @@
 from typing import List, Dict
 from igdb_service import get_igdb_access_token
 import requests
+import os
+
+# Fetch a list of genres from IGDB API
+# Return a list of dicts with genre ID and name
 
 def fetch_igdb_genres() -> List[Dict]:
     access_token = get_igdb_access_token()
