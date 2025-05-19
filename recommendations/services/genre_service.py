@@ -1,5 +1,5 @@
 from typing import List, Dict
-from igdb_service import get_igdb_access_token
+from .igdb_service import get_igdb_access_token
 import requests
 import os
 
