@@ -5,7 +5,8 @@ from rest_framework.response import Response
 from rest_framework import status
 from .services.igdb_service import query_igdb_games
 from .services.genre_service import fetch_igdb_genres
-from .services.price_service import get_game_price, get_plain_id
+from .services.price_service import get_game_price, get_game_id
+
 
 
 
@@ -48,12 +49,12 @@ class GameRecommendationView(APIView): # Configure Swagger for input first
             enriched_games = []
             for game in games:
                 title = game.get("title")
-                plain_id = get_plain_id(title)
+                plain_id = get_game_id(title)
                 price_info = get_game_price(plain_id) if plain_id else None
                 
-                if price_info and "list" in price_info and price_info["list"]:
+                if price_info and "deals" in price_info and price_info["deals"]:
                     # Take first price offer, assuming it's the best (it usually is)
-                    best_offer = price_info["list"][0]
+                    best_offer = price_info["deals"][0]
                     price_new = best_offer.get("price_new")
                     discount_pct = best_offer.get("price_cut")
                     currency = "GBP" #Can be changed if using elsewhere
