@@ -1,6 +1,7 @@
 import os
 import requests
 from typing import Optional, Dict
+from recommendations.utils.slugify import slugify_title
 
 
 def get_game_id(game_title: str) -> Optional[str]: # Uses IsThereAnyDeal's v3 search endpoint to retrieve the game UUID by title.
@@ -16,17 +17,22 @@ def get_game_id(game_title: str) -> Optional[str]: # Uses IsThereAnyDeal's v3 se
         "Authorization": f"key={api_key}",
         "Content-Type": "application/json"
     }
-    payload = {
-        "title": game_title
-    }
+    
+    # Attempt original title first
+    for attempt in [game_title, slugify_title(game_title)]:
+        payload = {"title": attempt}
+        try:
+            response = requests.post(url, headers=headers, json=payload)  # Changed to POST 
+            response.raise_for_status()
+            data = response.json()
 
-    response = requests.post(url, headers=headers, json=payload)  # Changed to POST 
-
-    data = response.json()
-
-    # Return a list of game entries
-    if isinstance(data, list) and data:
-        return data[0].get("id")  # UUID string
+            # Return a list of game entries
+            if isinstance(data, list) and data:
+                return data[0].get("id")  # UUID string
+        except requests.HTTPError as e:
+            print(f"[ITAD ERROR] Title lookup failed for '{attempt}': {e}")
+            continue # Try next attempt
+    
     return None
 
 
