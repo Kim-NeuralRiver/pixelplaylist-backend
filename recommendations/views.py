@@ -34,6 +34,7 @@ class GameRecommendationView(APIView): # Configure Swagger for input first
         genre_ids = request.data.get('genres')
         platform_id = request.data.get('platform')
         budget = request.data.get('budget') #price filtering
+        game_id = request.data.get('game_id') #for testing purposes
         
         # Input validation
         if not genre_ids or not platform_id or budget is None:
