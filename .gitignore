@@ -25,6 +25,7 @@ media/
 # Environment files
 .env
 .env.local
+structure.txt
 
 # IDE / OS files
 .vscode/

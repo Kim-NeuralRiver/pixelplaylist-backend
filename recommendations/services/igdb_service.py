@@ -32,7 +32,7 @@ def get_igdb_access_token() -> str:
 # Query IGDB for games matching specified criteria (genres and platform)
 # Return simplified game data dict
 
-def query_igdb_games(genre_ids: List[int], platform_id: List[int], limit: int = 2) -> List[Dict]: # Increase limit AFTER testing
+def query_igdb_games(genre_ids: List[int], platform_id: List[int], limit=6) -> List[Dict]: # Increase limit AFTER testing
 
     access_token = get_igdb_access_token()
 
