@@ -30,6 +30,7 @@ class GameRecommendationView(APIView): # Configure Swagger for input first
         ),
         responses={200: 'List of game recommendations'}
     )
+
     def post(self, request): #extract data from payload
         genre_ids = request.data.get('genres')
         platform_id = request.data.get('platform')
@@ -52,27 +53,23 @@ class GameRecommendationView(APIView): # Configure Swagger for input first
                 title = game.get("title")
                 plain_id = get_game_id(title)
                 price_info = get_game_price(plain_id) if plain_id else None
-                
-                # Default empty price info
+
                 game["price"] = {
                     "price": None,
                     "store": None,
                     "discount": None,
                     "url": None,
                 }
-                
-                # Add price info if available
+
                 if price_info and "deals" in price_info and price_info["deals"]:
-                    # Take first price offer, assuming it's the best (it usually is)
                     best_offer = price_info["deals"][0]
                     price_new = best_offer.get("price_new")
                     discount_pct = best_offer.get("price_cut")
-                    currency = "GBP" #Can be changed if needed
-                    
-                    # Budget filtering 
+                    currency = "GBP"
+
                     if isinstance(price_new, (int, float)) and price_new > budget:
-                        continue # Skip games that are over budget
-                    
+                        continue
+
                     game["price"] = {
                         "price": price_new,
                         "store": best_offer.get("shop", {}).get("name"),
