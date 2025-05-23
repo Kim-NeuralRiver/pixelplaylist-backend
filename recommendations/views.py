@@ -130,10 +130,10 @@ class GenreListView(APIView):#
             
 class GamePlaylistListCreate(generics.ListCreateAPIView): # Save playlists to the database
     serializer_class = GamePlaylistSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated] # Ensure user is authenticated
 
     def get_queryset(self):
         return GamePlaylist.objects.filter(user=self.request.user)
 
     def perform_create(self, serializer):
-        serializer.save(user=self.request.user)
+        serializer.save(user=self.request.user) # Users only see their own data 
