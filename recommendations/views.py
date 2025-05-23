@@ -3,12 +3,20 @@ from drf_yasg import openapi
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
+from rest_framework import generics
+from rest_framework.permissions import IsAuthenticated
 from .services.igdb_service import query_igdb_games
 from .services.genre_service import fetch_igdb_genres
 from .services.price_service import get_game_price, get_game_id
 from .services.openai_service import generate_game_blurb
+from .models import GamePlaylist
+from .serializers import GamePlaylistSerializer
 import logging
 
+
+#Protect API views with JWT authentication
+class ProtectedView(APIView):
+    permission_classes = [IsAuthenticated]
 
 #API view to handle Post requests
 # Needs JSON payload with 'genres' (IDs), platform (ID), and 'budget' (enriched using ITAD price data)
@@ -119,3 +127,13 @@ class GenreListView(APIView):#
                 {"error": str(e)},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
+            
+class GamePlaylistListCreate(generics.ListCreateAPIView): # Save playlists to the database
+    serializer_class = GamePlaylistSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        return GamePlaylist.objects.filter(user=self.request.user)
+
+    def perform_create(self, serializer):
+        serializer.save(user=self.request.user)
