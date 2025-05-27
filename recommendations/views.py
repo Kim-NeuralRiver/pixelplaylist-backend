@@ -1,3 +1,4 @@
+# Main logic for handling recommendation requests, genre fetching, and playlist saving, integrates external APIs and routes results back to the frontend
 from drf_yasg.utils import swagger_auto_schema
 from drf_yasg import openapi
 from rest_framework.views import APIView
@@ -70,7 +71,7 @@ class GameRecommendationView(APIView): # Configure Swagger for input first
                 }
 
                 if price_info and "deals" in price_info and price_info["deals"]:
-                    best_offer = price_info["deals"][0]
+                    best_offer = price_info["deals"][0] # Note: it could be just accepting the first deal that's scuppering price retrieval?
                     price_new = best_offer.get("price_new")
                     discount_pct = best_offer.get("price_cut")
                     currency = "GBP"
