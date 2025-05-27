@@ -1,3 +1,4 @@
+# Connects all backend views to their respective API endpoints (/api/recommendations/, /api/playlists/, etc.
 from django.urls import path
 from .views import (
     GameRecommendationView,
