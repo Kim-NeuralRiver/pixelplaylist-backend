@@ -31,7 +31,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-qp&%b35d@vem((zg3l8!0=@xrgy9e@06@%v$lbozmj^a=z^zx&'
+SECRET_KEY = 'django-insecure-qp&%b35d@vem((zg3l8!0=@xrgy9e@06@%v$lbozmj^a=z^zx&' # Note to self: replace this with a secure key in prod
 
 ALLOWED_HOSTS = ['https://pixelplaylist.onrender.com/','*','localhost', '127.0.0.1']
  
@@ -90,7 +90,7 @@ WSGI_APPLICATION = 'pixelplaylist.wsgi.application'
 DATABASES = {
     "default": dj_database_url.config(
         url=os.getenv("DATABASE_URL", ""),
-        conn_max_age=600, conn_health_checks=True, conn_max_age=600
+        conn_max_age=600, conn_health_checks=True, 
     )
 }
 
