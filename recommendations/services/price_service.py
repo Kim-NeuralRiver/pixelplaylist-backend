@@ -16,7 +16,7 @@ def get_game_id(game_title: str) -> Optional[str]:
         params = {
             "key": api_key,
             "title": attempt,
-            "results": 3
+            "results": 1
         }
 
         try:
@@ -30,10 +30,11 @@ def get_game_id(game_title: str) -> Optional[str]:
             print(f"[ITAD ERROR] Title lookup failed for '{attempt}': {e}")
             continue
 
+    #return game id here
     return None
 
 
-
+#this needs to take the returned game id from ^
 def get_game_price(game_id: str) -> Optional[Dict]:
     api_key = os.getenv("ITAD_API_KEY")
     base_url = "https://api.isthereanydeal.com"
@@ -50,10 +51,18 @@ def get_game_price(game_id: str) -> Optional[Dict]:
         "Content-Type": "application/json"
     }
 
-    response = requests.post(url, params=params, headers=headers, json=[game_id])
+    #need to add a request body like 
+    #[
+    # "018d937f-1382-7004-b65b-e6adfce11377" <-- this is the game id from the function above
+    #]
+
+    response = requests.post(url, params=params, headers=headers, json=[game_id]) #request body goes in here
     response.raise_for_status()
 
     data = response.json()
+
+    #we want data["deals"][0]["price"] <-- something like this
+
     if isinstance(data, dict) and "data" in data:
         for item in data["data"]:
             if item.get("id") == game_id:
