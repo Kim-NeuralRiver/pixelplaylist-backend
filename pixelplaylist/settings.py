@@ -16,6 +16,9 @@ import os
 from pathlib import Path
 import dj_database_url
 
+# Set DEBUG mode based on environment variable (manually turn off if production)
+DEBUG = os.environ.get('DEBUG', 'False') == 'True'
+
 # Load environment variables from .env file
 BASE_DIR = Path(__file__).resolve().parent.parent
 load_dotenv(os.path.join(BASE_DIR, '.env'))
@@ -30,15 +33,10 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = 'django-insecure-qp&%b35d@vem((zg3l8!0=@xrgy9e@06@%v$lbozmj^a=z^zx&'
 
-# SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
-
-ALLOWED_HOSTS = ['localhost', '127.0.0.1']
+ALLOWED_HOSTS = ['https://pixelplaylist.onrender.com/','*','localhost', '127.0.0.1']
  
  # CORS settings
-CORS_ALLOWED_ORIGINS = [
-    "http://localhost:3000",
-]
+CORS_ALLOW_ALL_ORIGINS = True  # Allow all origins for development
 
 # Application definition
 
@@ -90,9 +88,9 @@ WSGI_APPLICATION = 'pixelplaylist.wsgi.application'
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 
 DATABASES = {
-    "default": dj_database_url.parse(
+    "default": dj_database_url.config(
         url=os.getenv("DATABASE_URL", ""),
-        conn_max_age=600, conn_health_checks=True
+        conn_max_age=600, conn_health_checks=True, conn_max_age=600
     )
 }
 
