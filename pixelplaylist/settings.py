@@ -14,7 +14,7 @@ from pathlib import Path
 from dotenv import load_dotenv
 import os
 from pathlib import Path
-import dj_database_url
+import dj_database_url 
 
 # Set DEBUG mode based on environment variable (manually turn off if production)
 DEBUG = os.environ.get('DEBUG', 'False') == 'True'
@@ -89,7 +89,7 @@ WSGI_APPLICATION = 'pixelplaylist.wsgi.application'
 
 DATABASES = {
     "default": dj_database_url.config(
-        url=os.getenv("DATABASE_URL", ""),
+        os.getenv("DATABASE_URL", ""),
         conn_max_age=600, conn_health_checks=True, 
     )
 }
