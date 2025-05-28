@@ -70,7 +70,7 @@ class GameRecommendationView(APIView): # Configure Swagger for input first
                     "url": None,
                 }
 
-                if price_info and "deals" in price_info and price_info["deals"]:
+                if price_info and "deals" in price_info and price_info["deals"]: 
                     best_offer = price_info["deals"][0] # Note: it could be just accepting the first deal that's scuppering price retrieval?
                     price_new = best_offer.get("price_new")
                     discount_pct = best_offer.get("price_cut")
