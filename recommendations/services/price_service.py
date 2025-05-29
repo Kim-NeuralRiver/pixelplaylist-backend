@@ -10,7 +10,7 @@ def get_game_id(game_title: str) -> Optional[str]:
     if not api_key:
         raise RuntimeError("ITAD_API_KEY not set in environment variables")
 
-    url = f"{base_url}/games/search/v1"
+    url = f"{base_url}/games/search/v1" # <- GET
 
     for attempt in [game_title, slugify_title(game_title)]:
         params = {
@@ -20,17 +20,17 @@ def get_game_id(game_title: str) -> Optional[str]:
         }
 
         try:
-            response = requests.get(url, params=params)
+            response = requests.get(url, params=params) 
             response.raise_for_status()
             data = response.json()
 
-            if isinstance(data, list) and data:
-                return data[0].get("id")
+            if "data" in data and isinstance(data["data"], list) and data["data"]:
+                return data["data"][0].get("plain") # <-- this is where I return game id
+            
         except requests.HTTPError as e:
             print(f"[ITAD ERROR] Title lookup failed for '{attempt}': {e}")
             continue
 
-    #return game id here
     return None
 
 
@@ -41,31 +41,47 @@ def get_game_price(game_id: str) -> Optional[Dict]:
     if not api_key:
         raise RuntimeError("ITAD_API_KEY not set in environment variables")
 
-    url = f"{base_url}/games/prices/v3"
-    params = {
-        "key": api_key,
-        "country": "GB"
-    }
+    url = f"{base_url}/games/prices/v3" # <- POST
 
     headers = {
         "Content-Type": "application/json"
     }
+    
+    json_body = {
+        "plains": [game_id] # <-- request body
+    }
+    
+    params = {
+        "key": api_key,
+        "country": "GB"
+    }
+    
+    try: # try to get price
+        response = requests.post(url, params=params, headers=headers, json=json_body) #request body goes in here
+        response.raise_for_status()
+        data = response.json()
+        
+        deals = data.get("data", {}).get(game_id, {}).get("list", [])
+        if deals:
+            return deals[0].get("price")
+        else:
+            print(f"[ITAD Error]: No deals found for game: {game_id}")
+            return None
+        
+    except requests.HTTPError as e: 
+        print(f"[ITAD Error]: Failed to fetch price for game '{game_id}': {e}")
+        return None
+        
 
-    #need to add a request body like 
-    #[
-    # "018d937f-1382-7004-b65b-e6adfce11377" <-- this is the game id from the function above
-    #]
+"""  Maybe insert a second GET request below for further game data """
 
-    response = requests.post(url, params=params, headers=headers, json=[game_id]) #request body goes in here
-    response.raise_for_status()
+ 
+    # if isinstance(data, dict) and "data" in data:
+    #     for item in data["data"]:
+    #         if item.get("id") == game_id:
+    #             return item
 
-    data = response.json()
-
-    #we want data["deals"][0]["price"] <-- something like this
-
-    if isinstance(data, dict) and "data" in data:
-        for item in data["data"]:
-            if item.get("id") == game_id:
-                return item
-
-    return None
+   # return None
+   
+   # ^-- Don't think I need to above anymore, keeping just in case
+   
