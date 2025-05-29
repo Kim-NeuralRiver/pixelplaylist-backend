@@ -5,4 +5,5 @@ from .models import GamePlaylist
 class GamePlaylistSerializer(serializers.ModelSerializer):
     class Meta:
         model = GamePlaylist
-        fields = ['id', 'name', 'games', 'created_at']
+        fields = ['id', 'name', 'games', 'created_at', 'user']
+        read_only_fields = ['id']
