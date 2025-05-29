@@ -23,9 +23,6 @@ DEBUG = os.environ.get('DEBUG', 'False') == 'True'
 BASE_DIR = Path(__file__).resolve().parent.parent
 load_dotenv(os.path.join(BASE_DIR, '.env'))
 
-# Build paths inside the project like this: BASE_DIR / 'subdir'.
-BASE_DIR = Path(__file__).resolve().parent.parent
-
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
@@ -87,10 +84,12 @@ WSGI_APPLICATION = 'pixelplaylist.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 
+
 DATABASES = {
     "default": dj_database_url.config(
-        os.getenv("DATABASE_URL", ""),
-        conn_max_age=600, conn_health_checks=True, 
+        default=os.getenv("DATABASE_URL", ""),
+        conn_max_age=600,
+        conn_health_checks=True,
     )
 }
 
