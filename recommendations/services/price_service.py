@@ -1,6 +1,6 @@
 import os
 import requests
-from typing import Optional, Dict
+from typing import Optional, List, Dict
 from recommendations.utils.slugify import slugify_title
 
 
@@ -47,27 +47,23 @@ def get_game_price(game_id: str) -> Optional[Dict]:
         "Content-Type": "application/json"
     }
     
-    json_body = {
-        "plains": [game_id] # <-- request body
-    }
+    body = [game_id] # <-- request body
     
     params = {
         "key": api_key,
         "country": "GB"
     }
     
-    try: # try to get price
-        response = requests.post(url, params=params, headers=headers, json=json_body) #request body goes in here
+    try: # try to get info
+        response = requests.post(url, params=params, headers=headers, json=body) #request body goes in here
         response.raise_for_status()
         data = response.json()
         
-        deals = data.get("data", {}).get(game_id, {}).get("list", [])
-        if deals:
-            return deals[0].get("price")
+        if game_id in data and "list" in data[game_id]: 
+            return data[game_id]["list"] # Return entire list of deals with price & store data
         else:
-            print(f"[ITAD Error]: No deals found for game: {game_id}")
-            return None
-        
+            return []
+             
     except requests.HTTPError as e: 
         print(f"[ITAD Error]: Failed to fetch price for game '{game_id}': {e}")
         return None

@@ -68,23 +68,40 @@ class GameRecommendationView(APIView): # Configure Swagger for input first
                     "store": None,
                     "discount": None,
                     "url": None,
+                    "currency": "GBP"
                 }
 
-                if price_info and "deals" in price_info and price_info["deals"]: 
-                    best_offer = price_info["deals"][0] # Note: it could be just accepting the first deal that's scuppering price retrieval?
-                    price_new = best_offer.get("price_new")
-                    discount_pct = best_offer.get("price_cut")
-                    currency = "GBP"
-
-                    if isinstance(price_new, (int, float)) and price_new > budget:
-                        continue
+                if price_info and isinstance(price_info, list):
+                    best_offer = None
+                    lowest_price = float("inf")
+                    
+                    for deal in price_info:
+                        price = deal.get("price_new")
+                        if price is None:
+                            continue # Skip if no price available 
+                        
+                        if price < lowest_price:
+                            best_offer = deal
+                            lowest_price = price
+                        elif price == lowest_price:
+                            if best_offer and best_offer.get("shop", {}).get("id") != "steam" and deal.get("shop", {}).get("id") == "steam":
+                                best_offer = deal # Prefer Steam if prices are all the same
+                                
+                    if best_offer:
+                        price_new = best_offer.get("price_new")
+                        discount_pct = best_offer.get("price_cut")
+                        currency = "GBP" # Can be adjusted if breaking
+                        
+                        # Skip games that go over budget
+                        if isinstance(price_new, (int, float)) and price_new > budget:
+                            continue
 
                     game["price"] = {
                         "price": price_new,
                         "store": best_offer.get("shop", {}).get("name"),
                         "discount": (
                             f"This game's price is ${price_new:.2f} after {discount_pct}% discount"
-                            if discount_pct else None
+                            if discount_pct else None # if no discount, set to None
                         ),
                         "currency": currency,
                         "url": best_offer.get("url"),
@@ -130,6 +147,29 @@ class GenreListView(APIView):#
             )
             
 class GamePlaylistListCreate(generics.ListCreateAPIView): # Save playlists to the database
+    @swagger_auto_schema(
+        request_body=openapi.Schema(
+            type=openapi.TYPE_OBJECT,
+            properties={
+                'name': openapi.Schema(type=openapi.TYPE_STRING),
+                'games': openapi.Schema(
+                    type=openapi.TYPE_ARRAY,
+                    items=openapi.Items(type=openapi.TYPE_OBJECT)
+                ),
+            },
+            required=['name', 'games'],
+            example={
+                "name": "Fantasy RPGs",
+                "games": [
+                    {"title": "Bastion", "price": 24.99, "store": "Steam"},
+                    {"title": "Celeste", "price": 19.99, "store": "GOG"}
+                ]
+            }
+        )
+    )
+    def post(self, request, *args, **kwargs):
+        return super().post(request, *args, **kwargs)
+    
     serializer_class = GamePlaylistSerializer
     permission_classes = [IsAuthenticated] # Ensure user is authenticated
 
@@ -137,4 +177,10 @@ class GamePlaylistListCreate(generics.ListCreateAPIView): # Save playlists to th
         return GamePlaylist.objects.filter(user=self.request.user)
 
     def perform_create(self, serializer):
-        serializer.save(user=self.request.user) # Users only see their own data 
+        name = self.request.data.get("name")
+        games = self.request.data.get("games")
+        
+        if not name or not games:
+            raise serializers.ValidationError("Both 'name' and 'games' are necessary to create a playlist.")
+        
+        serializer.save(user=self.request.user, name=name, games=games) # Users only see their own data 
