@@ -44,7 +44,7 @@ def query_igdb_games(genre_ids: List[int], platform_id: List[int], limit=10) -> 
     
     # Construct IGDB query: filter by genres and platform, sort by popularity, get important fields
     query = f"""
-    fields name, cover.image_id, platforms.name, summary, genres.name;
+    fields name, cover.image_id, platform.name, summary, genres.name;
     where genres = ({', '.join(map(str, genre_ids))}) & platforms = ({platform_id});
     sort popularity desc;
     limit {limit};
@@ -72,7 +72,7 @@ def format_igdb_response(games: List[Dict]) -> List[Dict]:
         formatted_games.append({
             "title": game['name'],
             "cover_url": cover_url,
-            "platforms": [p['name'] for p in game.get('platforms', [])],
+            "platform": [p['name'] for p in game.get('platform', [])],
             "summary": game.get('summary', ''),
             "genres": [g['name'] for g in game.get('genres', [])],
         })
