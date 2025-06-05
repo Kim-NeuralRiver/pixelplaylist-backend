@@ -1,20 +1,26 @@
 # Main logic for handling recommendation requests, genre fetching, and playlist saving, integrates external APIs and routes results back to the frontend
 from drf_yasg.utils import swagger_auto_schema
 from drf_yasg import openapi
+from django.contrib.auth.models import User
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
-from rest_framework import generics
+from rest_framework import generics, permissions
 from rest_framework.permissions import IsAuthenticated
+from rest_framework import serializers
 from .services.igdb_service import query_igdb_games
 from .services.genre_service import fetch_igdb_genres
 from .services.price_service import get_game_price, get_game_id
 from .services.openai_service import generate_game_blurb
 from .models import GamePlaylist
-from .serializers import GamePlaylistSerializer
+from .serializers import GamePlaylistSerializer, UserCreateSerializer
 import logging
 
-
+class UserCreateView(generics.CreateAPIView): # Registration view
+    queryset = User.objects.all()
+    serializer_class = UserCreateSerializer
+    permission_classes = [permissions.AllowAny]
+    
 #Protect API views with JWT authentication
 class ProtectedView(APIView):
     permission_classes = [IsAuthenticated]
@@ -22,6 +28,7 @@ class ProtectedView(APIView):
 #API view to handle Post requests
 # Needs JSON payload with 'genres' (IDs), platform (ID), and 'budget' (enriched using ITAD price data)
 class GameRecommendationView(APIView): # Configure Swagger for input first
+    permission_classes = [IsAuthenticated]
     @swagger_auto_schema(
         request_body=openapi.Schema(
             type=openapi.TYPE_OBJECT,
@@ -131,7 +138,9 @@ class GameRecommendationView(APIView): # Configure Swagger for input first
             )
             
 # Return a list of genre IDs and names from IGDB API
-class GenreListView(APIView):#
+class GenreListView(APIView):
+    permission_classes = [IsAuthenticated]
+    
     @swagger_auto_schema(
         operation_description="Retrieve IGDB genres",
         responses={200: "List of genres"}
@@ -147,6 +156,8 @@ class GenreListView(APIView):#
             )
             
 class GamePlaylistListCreate(generics.ListCreateAPIView): # Save playlists to the database
+    permission_classes = [IsAuthenticated]
+    
     @swagger_auto_schema(
         request_body=openapi.Schema(
             type=openapi.TYPE_OBJECT,
