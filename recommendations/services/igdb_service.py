@@ -43,9 +43,10 @@ def query_igdb_games(genre_ids: List[int], platform_id: List[int], limit=10) -> 
     }
     
     # Construct IGDB query: filter by genres and platform, sort by popularity, get important fields
+    
     query = f"""
-    fields name, cover.image_id, platform.name, summary, genres.name;
-    where genres = ({', '.join(map(str, genre_ids))}) & platforms = ({platform_id});
+    fields name, cover.image_id, platforms.name, summary, genres.name;
+    where genres = ({', '.join(map(str, genre_ids))}) & platforms = ({str(platform_id)}); 
     sort popularity desc;
     limit {limit};
     """

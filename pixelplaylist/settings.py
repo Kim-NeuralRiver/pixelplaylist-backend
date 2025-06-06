@@ -10,16 +10,16 @@ load_dotenv(BASE_DIR / ".env")
 
 # Detect environment (dev or prod)
 ENVIRONMENT = os.getenv("DJANGO_ENV", "development")
-DEBUG = ENVIRONMENT == "development"
+DEBUG = ENVIRONMENT == "development" 
 
 # Secret key
 SECRET_KEY = os.getenv("DJANGO_SECRET_KEY", "fallback-insecure-dev-key")
 
 # Allowed hosts
 if DEBUG:
-    ALLOWED_HOSTS = ["*"]
+    ALLOWED_HOSTS = ["*"] # Allow all hosts in development
 else:
-    ALLOWED_HOSTS = os.getenv("DJANGO_ALLOWED_HOSTS", "pixelplaylist.onrender.com").split(",")
+    ALLOWED_HOSTS = os.getenv("DJANGO_ALLOWED_HOSTS", "pixelplaylist.onrender.com").split(",") # Allow multiple hosts
 
 # Installed apps
 INSTALLED_APPS = [
@@ -33,12 +33,12 @@ INSTALLED_APPS = [
     'rest_framework',
     'corsheaders',
     'recommendations',
-    'rest_framework.authtoken',
-    'dj_rest_auth'
+    'rest_framework.authtoken', # Same as below
+    'dj_rest_auth' # Added this as test for token based authentication
 ]
 
 if DEBUG:
-    INSTALLED_APPS += ['debug_toolbar']
+    INSTALLED_APPS += ['debug_toolbar'] 
 
 # Middleware
 MIDDLEWARE = [
@@ -53,17 +53,17 @@ MIDDLEWARE = [
 ]
 
 if DEBUG:
-    MIDDLEWARE.insert(0, "debug_toolbar.middleware.DebugToolbarMiddleware")
+    MIDDLEWARE.insert(0, "debug_toolbar.middleware.DebugToolbarMiddleware") 
 
-ROOT_URLCONF = 'pixelplaylist.urls'
+ROOT_URLCONF = 'pixelplaylist.urls' 
 
-TEMPLATES = [
+TEMPLATES = [ 
     {
-        'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],
-        'APP_DIRS': True,
+        'BACKEND': 'django.template.backends.django.DjangoTemplates', 
+        'DIRS': [], 
+        'APP_DIRS': True, 
         'OPTIONS': {
-            'context_processors': [
+            'context_processors': [ 
                 'django.template.context_processors.debug',
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
@@ -73,18 +73,18 @@ TEMPLATES = [
     },
 ]
 
-WSGI_APPLICATION = 'pixelplaylist.wsgi.application'
+WSGI_APPLICATION = 'pixelplaylist.wsgi.application' 
 
 # Database
 DATABASES = {
     "default": dj_database_url.config(
         default=os.getenv("DATABASE_URL", ""),
-        conn_max_age=600,
+        conn_max_age=600, 
         conn_health_checks=True,
     )
 }
 
-# JWT settings
+# JWT setting
 SIMPLE_JWT = {
     "ACCESS_TOKEN_LIFETIME": timedelta(minutes=5),
     "REFRESH_TOKEN_LIFETIME": timedelta(days=1),
@@ -100,12 +100,12 @@ REST_FRAMEWORK = {
     ],
 }
 
-# Static files
+# Static files 
 STATIC_URL = '/static/'
-STATIC_ROOT = BASE_DIR / 'pixelplaylist-backend/static/'
+STATIC_ROOT = BASE_DIR / 'pixelplaylist-backend/static/' 
 
 
-# Media files (if needed)
+# Media files (if needed later)
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
 
@@ -116,7 +116,7 @@ CORS_ALLOW_ALL_ORIGINS = DEBUG
 
 # Internal IPs for debug toolbar
 if DEBUG:
-    INTERNAL_IPS = ["127.0.0.1"]
+    INTERNAL_IPS = ["127.0.0.1"] # Allow local requests for debug toolbar
 
 # Logging
 if not DEBUG:
@@ -135,9 +135,21 @@ if not DEBUG:
                 'handlers': ['file'],
                 'level': 'WARNING',
                 'propagate': True,
-            },
+            }, 
         },
     }
 
 # Default auto field
-DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'  
+
+# Swagger settings for Auth testing:
+
+SWAGGER_SETTINGS = {
+    'SECURITY_DEFINITIONS': {
+        'Bearer': {
+            'type': 'apiKey',
+            'name': 'Authorization',
+            'in': 'header',
+        },
+    },
+}

@@ -8,6 +8,7 @@ from rest_framework import status
 from rest_framework import generics, permissions
 from rest_framework.permissions import IsAuthenticated
 from rest_framework import serializers
+from rest_framework.exceptions import ValidationError
 from .services.igdb_service import query_igdb_games
 from .services.genre_service import fetch_igdb_genres
 from .services.price_service import get_game_price, get_game_id
@@ -21,10 +22,6 @@ class UserCreateView(generics.CreateAPIView): # Registration view
     serializer_class = UserCreateSerializer
     permission_classes = [permissions.AllowAny]
     
-#Protect API views with JWT authentication
-class ProtectedView(APIView):
-    permission_classes = [IsAuthenticated]
-
 #API view to handle Post requests
 # Needs JSON payload with 'genres' (IDs), platform (ID), and 'budget' (enriched using ITAD price data)
 class GameRecommendationView(APIView): # Configure Swagger for input first
@@ -68,7 +65,16 @@ class GameRecommendationView(APIView): # Configure Swagger for input first
             for game in games:
                 title = game.get("title")
                 plain_id = get_game_id(title)
-                price_info = get_game_price(plain_id) if plain_id else None
+                if not plain_id:
+                    logger = logging.getLogger(__name__)
+                    logger.warning(f"No plain ID found for {title}.")
+                    continue
+
+                price_info = get_game_price(plain_id)
+                if not price_info:
+                    game["price_note"] = "Price data unavailable from ITAD."
+                    logger.warning(f"No price information found for {title}.")
+                    continue
 
                 game["price"] = {
                     "price": None,
@@ -78,7 +84,7 @@ class GameRecommendationView(APIView): # Configure Swagger for input first
                     "currency": "GBP"
                 }
 
-                if price_info and isinstance(price_info, list):
+                if isinstance(price_info, list):
                     best_offer = None
                     lowest_price = float("inf")
                     
@@ -101,37 +107,43 @@ class GameRecommendationView(APIView): # Configure Swagger for input first
                         
                         # Skip games that go over budget
                         if isinstance(price_new, (int, float)) and price_new > budget:
-                            continue
-
-                    game["price"] = {
-                        "price": price_new,
-                        "store": best_offer.get("shop", {}).get("name"),
-                        "discount": (
-                            f"This game's price is ${price_new:.2f} after {discount_pct}% discount"
-                            if discount_pct else None # if no discount, set to None
-                        ),
-                        "currency": currency,
-                        "url": best_offer.get("url"),
-                    }
-
+                            game["price_note"] = f"Skipped: {title}, it exceeds the budget (£{price_new:.2f})"
+                        else:
+                            game["price"] = {
+                                "price": price_new,
+                                "store": best_offer.get("shop", {}).get("name"),
+                                "discount": (
+                                    f"This game's price is £{price_new:.2f} after {discount_pct}% discount"
+                                    if discount_pct else None # if no discount, set to None
+                                ),
+                                "currency": currency,
+                                "url": best_offer.get("url"),
+                            }
+                            
 # Add OpenAI generated blurb regardless of price availability 
 
-            try: 
-                game["blurb"] = generate_game_blurb(game)
-            except Exception as blurb_error: # Catch errors from OpenAI
-                logger = logging.getLogger(__name__)
-                logger.warning(f"Blurb generation failed for {game.get('title')}: {str(blurb_error)}")
-                game["blurb"] = "Blurb generation failed. Please try again later."
+                try: 
+                    game["blurb"] = generate_game_blurb(game)
+                except Exception as blurb_error:  # Catch errors from OpenAI
+                    logger.warning(f"Blurb generation failed for {game.get('title', 'Unknown Title')}: {str(blurb_error)}")
+                    game["blurb"] = "Blurb generation failed. Please try again later."
                 
+                # Always append the game after processing blurb, even if an exception occurs
                 enriched_games.append(game)
-            
+                logger.info(f"Processed game: {game.get('title')}")
+
+            if not enriched_games:
+                logger.info("No games found matching the criteria.")
+                return Response()
+
+            logger.info(f"Returning {len(enriched_games)} enriched games out of {len(games)} IGDB results")
             return Response(enriched_games, status=status.HTTP_200_OK)
-        
+
+
         # Catch errors
         except Exception as e:
-            logger = logging.getLogger(__name__)
             logger.error("An error occurred while processing the request", exc_info=True)
-            
+
             return Response(
                 {"error": str(e)},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
@@ -156,8 +168,6 @@ class GenreListView(APIView):
             )
             
 class GamePlaylistListCreate(generics.ListCreateAPIView): # Save playlists to the database
-    permission_classes = [IsAuthenticated]
-    
     @swagger_auto_schema(
         request_body=openapi.Schema(
             type=openapi.TYPE_OBJECT,
@@ -178,20 +188,19 @@ class GamePlaylistListCreate(generics.ListCreateAPIView): # Save playlists to th
             }
         )
     )
-    def post(self, request, *args, **kwargs):
-        return super().post(request, *args, **kwargs)
+    def post(self, request, *args, **kwargs): # Handle playlist creation
+        return super().post(request, *args, **kwargs) 
     
-    serializer_class = GamePlaylistSerializer
-    permission_classes = [IsAuthenticated] # Ensure user is authenticated
+    serializer_class = GamePlaylistSerializer # Serializer for playlist data
 
-    def get_queryset(self):
+    def get_queryset(self): # Retrieve playlists
         return GamePlaylist.objects.filter(user=self.request.user)
 
-    def perform_create(self, serializer):
+    def perform_create(self, serializer): # Create / Save playlist with user data
         name = self.request.data.get("name")
         games = self.request.data.get("games")
         
-        if not name or not games:
+        if not name or not games: 
             raise serializers.ValidationError("Both 'name' and 'games' are necessary to create a playlist.")
         
-        serializer.save(user=self.request.user, name=name, games=games) # Users only see their own data 
+        serializer.save(user=self.request.user, name=name, games=games) # Users only see their own data             raise ValidationError({"detail": "Both 'name' and 'games' are necessary to create a playlist."})
