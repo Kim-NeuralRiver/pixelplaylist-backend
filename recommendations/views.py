@@ -29,7 +29,7 @@ class UserCreateView(generics.CreateAPIView): # Registration view
 # API view to handle Post requests for game recommendations
 # Needs JSON payload with 'genres' (IDs), platform (ID), and 'budget' (enriched using ITAD price data)
 class GameRecommendationView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [permissions.AllowAny]
 
     # Configure Swagger for input using the new serializer
     @swagger_auto_schema(
@@ -286,7 +286,7 @@ class GameRecommendationView(APIView):
             game["price_note"] = (current_note + additional_note).strip()
             
 class GenreListView(APIView):
-    #permission_classes = [IsAuthenticated]
+    permission_classes = [permissions.AllowAny]
     
     @swagger_auto_schema(
         operation_description="Retrieve IGDB genres",
