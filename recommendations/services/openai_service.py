@@ -1,17 +1,25 @@
-from openai import OpenAI
+from openai import OpenAI, OpenAIError
 import os
 from typing import Dict
+import requests
+
+# Define custom exception for OpenAI service failures
+class OpenAIServiceError(RuntimeError):
+    """Custom exception for errors specifically from the OpenAI service."""
+    pass
 
 def generate_game_blurb(game: Dict) -> str:
     api_key = os.getenv("OPENAI_API_KEY")
     if not api_key:
-        raise EnvironmentError("OPENAI_API_KEY not set in environment variables.")
+        raise OpenAIServiceError("OPENAI_API_KEY not set in environment variables.")
 
     client = OpenAI(api_key=api_key)
 
+    # Use .get() with default values to handle potentially missing keys from game data
     title = game.get("title", "Unknown Title")
+    # If genres or platforms are missing, provide a default value
     genres = ",".join(game.get("genres", [])) or "Various Genres"
-    platform = ",".join(game.get("platforms", [])) or "Various Platforms"
+    platform = ",".join(game.get("platform", [])) or "Various Platforms"
     summary = game.get("summary", "No summary available.")
 
     prompt = (
@@ -33,12 +41,21 @@ def generate_game_blurb(game: Dict) -> str:
 
     try:
         response = client.chat.completions.create(
-            model="gpt-4.1-mini",
+            model="gpt-4o-mini",
             messages=[{"role": "user", "content": prompt}],
             temperature=0.75,
             max_tokens=100,
+            timeout=10  # Set a timeout to prevent hanging requests
         )
         return response.choices[0].message.content.strip()
 
+    except OpenAIError as e: # Catch specific OpenAI API errors
+        raise OpenAIServiceError(f"OpenAI API error during blurb generation: {str(e)}")
+    except requests.exceptions.Timeout:
+        raise OpenAIServiceError("OpenAI blurb generation request timed out.")
+    except requests.exceptions.RequestException as e:
+        # Catch underlying network errors that requests might raise (OpenAI client uses requests)
+        raise OpenAIServiceError(f"Network error during OpenAI blurb generation: {str(e)}")
     except Exception as e:
-        raise RuntimeError(f"Unexpected error occurred during blurb generation: {str(e)}")
+        # Catch any other unexpected errors during blurb generation
+        raise OpenAIServiceError(f"An unexpected error occurred during blurb generation: {str(e)}")
