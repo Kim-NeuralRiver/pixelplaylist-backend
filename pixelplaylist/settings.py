@@ -1,4 +1,5 @@
 import os
+import logging
 from pathlib import Path
 from dotenv import load_dotenv
 from datetime import timedelta
@@ -10,7 +11,13 @@ load_dotenv(BASE_DIR / ".env")
 
 # Detect environment (dev or prod)
 ENVIRONMENT = os.getenv("DJANGO_ENV", "development")
-DEBUG = ENVIRONMENT == "development" 
+
+IS_PRODUCTION = (
+    ENVIRONMENT == "production" or
+    os.getenv("RENDER") or 
+    not os.getenv("DATABASE_URL", "").startswith("sqlite")
+)
+DEBUG = not IS_PRODUCTION
 
 # Secret key
 SECRET_KEY = os.getenv("DJANGO_SECRET_KEY", "fallback-insecure-dev-key")
@@ -110,9 +117,20 @@ MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
 
 # CORS
-CORS_ALLOW_ALL_ORIGINS = DEBUG
-# Or use whitelist for prod:
-# CORS_ALLOWED_ORIGINS = ["https://yourfrontend.app"] if not DEBUG else []
+if DEBUG:
+    CORS_ALLOW_ALL_ORIGINS = True
+else:
+    CORS_ALLOWED_ORIGINS = [
+        "https://pixelplaylist.onrender.com",
+        "https://pixelplaylist-236adlnml-kims-projects-6e7fcba5.vercel.app",  # Replace with actual frontend URL
+    ]
+    
+# CSRF trusted origins:
+if not DEBUG:
+    CSRF_TRUSTED_ORIGINS = [
+        "https://pixelplaylist.onrender.com",
+        "https://pixelplaylist-236adlnml-kims-projects-6e7fcba5.vercel.app",  # Replace with actual frontend URL
+    ]
 
 # Internal IPs for debug toolbar
 if DEBUG:
@@ -138,6 +156,14 @@ if not DEBUG:
             }, 
         },
     }
+    
+if not DEBUG:
+    SECURE_BROWSER_XSS_FILTER = True
+    SECURE_CONTENT_TYPE_NOSNIFF = True
+    X_FRAME_OPTIONS = 'DENY'
+    SECURE_HSTS_SECONDS = 31536000
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+    SECURE_HSTS_PRELOAD = True
 
 # Default auto field
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'  
