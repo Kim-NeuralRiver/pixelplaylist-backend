@@ -12,18 +12,41 @@ class GamePlaylistSerializer(serializers.ModelSerializer):
 
 # User create serializer using Django's built in user model 
 class UserCreateSerializer(serializers.ModelSerializer):
-    password = serializers.CharField(write_only=True)
+    password = serializers.CharField(write_only=True, min_length=8)
+    name = serializers.CharField(required=False, allow_blank=True)  # Optional name field
     
     class Meta:
         model = User
-        fields = ['username', 'email', 'password']
+        fields = ['username', 'email', 'password', 'name']
+        
+    def validate_email(self, value): # Ensure email is unique and valid
+        if User.objects.filter(email=value).exists():
+            raise serializers.ValidationError("A user with this email already exists.")
+        return value
+        
+    def validate_username(self, value): # Ensure username is unique and valid
+        if User.objects.filter(username=value).exists():
+            raise serializers.ValidationError("A user with this username already exists.")
+        return value
         
     def create(self, validated_data):
+        # Remove name from validated_data if present 
+        name = validated_data.pop('name', '')
+        
         user = User.objects.create_user(
             username=validated_data['username'],
             email=validated_data['email'],
             password=validated_data['password']
         )
+        
+        # Store name in first_name and last_name if provided
+        if name:
+            name_parts = name.split(' ', 1)
+            user.first_name = name_parts[0]
+            if len(name_parts) > 1:
+                user.last_name = name_parts[1]
+            user.save()
+            
         return user
     
 # New serializer for validating input to GameRecommendationView
@@ -35,7 +58,7 @@ class GameRecommendationInputSerializer(serializers.Serializer):
         default=[21, 35, 2],
         help_text="A list of genre IDs, e.g.: [21, 35, 2]."
     )
-    platform = serializers.ListField(  # CHANGED: Now accepts a list like genres
+    platform = serializers.ListField(  # accepts a list like genres
         child=serializers.IntegerField(min_value=1),
         min_length=1,
         default=[6],  # Changed to list format, will see if this works better
