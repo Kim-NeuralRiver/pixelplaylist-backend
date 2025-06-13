@@ -21,10 +21,50 @@ from concurrent.futures import ThreadPoolExecutor, as_completed # For concurrent
 # Logger instantiation for the module
 logger = logging.getLogger(__name__)
 
-class UserCreateView(generics.CreateAPIView): # Registration view
-    queryset = User.objects.all()
-    serializer_class = UserCreateSerializer
-    permission_classes = [permissions.AllowAny]
+# User Registration View
+class UserCreateView(generics.CreateAPIView): 
+    queryset = User.objects.all() # User creation queryset to allow registration 
+    serializer_class = UserCreateSerializer 
+    permission_classes = [permissions.AllowAny] # Ensure users aren't blocked from signing up
+    
+    @swagger_auto_schema(
+        request_body=UserCreateSerializer,
+        responses={
+            201: openapi.Response(
+                description="User created successfully", 
+                schema=openapi.Schema(
+                    type=openapi.TYPE_OBJECT,
+                    properties={ # Define the response schema for successful user creation
+                        'id': openapi.Schema(type=openapi.TYPE_INTEGER),
+                        'username': openapi.Schema(type=openapi.TYPE_STRING),
+                        'email': openapi.Schema(type=openapi.TYPE_STRING),
+                    }
+                )
+            ),
+            400: openapi.Response(
+                description="Validation error",
+                schema=openapi.Schema(
+                    type=openapi.TYPE_OBJECT,
+                    properties={
+                        'detail': openapi.Schema(type=openapi.TYPE_STRING),
+                        'username': openapi.Schema(type=openapi.TYPE_ARRAY, items=openapi.Items(type=openapi.TYPE_STRING)),
+                        'email': openapi.Schema(type=openapi.TYPE_ARRAY, items=openapi.Items(type=openapi.TYPE_STRING)),
+                        'password': openapi.Schema(type=openapi.TYPE_ARRAY, items=openapi.Items(type=openapi.TYPE_STRING)),
+                    }
+                )
+            )
+        }
+    )
+    def post(self, request, *args, **kwargs): # post method for user creation
+        try:
+            return super().create(request, *args, **kwargs)
+        except Exception as e:
+            logger.error(f"User creation failed: {e}", exc_info=True)
+            return Response(
+                {"detail": "User creation failed. Please try again."},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+    
     
 # API view to handle Post requests for game recommendations
 # Needs JSON payload with 'genres' (IDs), platform (ID), and 'budget' (enriched using ITAD price data)
