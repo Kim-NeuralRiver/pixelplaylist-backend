@@ -124,6 +124,12 @@ AUTH_PASSWORD_VALIDATORS = [
     },
 ]
 
+# Custom auth backend for email and username login
+AUTHENTICATION_BACKENDS = [
+    'recommendations.backends.EmailBackend',  # Try email first
+    'django.contrib.auth.backends.ModelBackend',  # Fallback to username
+]
+
 # REST Framework
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
