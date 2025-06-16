@@ -87,14 +87,7 @@ DATABASES = {
     "default": dj_database_url.config(
         default=os.getenv("DATABASE_URL", ""),
         conn_max_age=30, # Reduced to prevent timeout issues
-        conn_health_checks=True,
-        options={
-            'MAX_CONNS': 20,
-            'OPTIONS': {
-                'connect_timeout': 10, #reduced 
-                'application_name': 'pixelplaylist-backend', # added application name for good logging practice
-            } 
-        }
+        conn_health_checks=True
     )
 }
 
