@@ -58,6 +58,8 @@ class UserCreateView(generics.CreateAPIView):
     def post(self, request, *args, **kwargs): # post method for user creation
         try:
             return super().create(request, *args, **kwargs)
+        except serializers.ValidationError:
+            raise # Raise 400 bad req if validation fails
         except Exception as e:
             logger.error(f"User creation failed: {e}", exc_info=True)
             return Response(
