@@ -170,26 +170,53 @@ if not DEBUG:
 if DEBUG:
     INTERNAL_IPS = ["127.0.0.1"] # Allow local requests for debug toolbar
 
-# Logging
-if not DEBUG:
-    LOGGING = {
-        'version': 1,
-        'disable_existing_loggers': False,
-        'handlers': {
-            'file': {
-                'level': 'WARNING',
-                'class': 'logging.FileHandler',
-                'filename': BASE_DIR / 'logs/django.log',
-            },
+# Logging configuration - Updated for prod deployment
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'verbose': {
+            'format': '{levelname} {asctime} {module} {process:d} {thread:d} {message}',
+            'style': '{',
         },
-        'loggers': {
-            'django': {
-                'handlers': ['file'],
-                'level': 'WARNING',
-                'propagate': True,
-            }, 
+        'simple': {
+            'format': '{levelname} {message}',
+            'style': '{',
         },
-    }
+    },
+    'handlers': {
+        'console': {
+            'level': 'INFO',
+            'class': 'logging.StreamHandler',
+            'formatter': 'verbose'
+        },
+        # Only use file handler in development when logs directory exists
+        'file': {
+            'level': 'ERROR',
+            'class': 'logging.StreamHandler',  # Changed from FileHandler to StreamHandler to address render issue
+            'formatter': 'verbose',
+        } if DEBUG else {
+            'level': 'ERROR', 
+            'class': 'logging.StreamHandler',
+            'formatter': 'verbose',
+        }
+    },
+    'root': {
+        'handlers': ['console'],
+    },
+    'loggers': {
+        'django': {
+            'handlers': ['console'],
+            'level': 'INFO',
+            'propagate': False,
+        },
+        'recommendations': {
+            'handlers': ['console'],
+            'level': 'DEBUG' if DEBUG else 'INFO',
+            'propagate': False,
+        },
+    },
+}
     
 if not DEBUG:
     SECURE_BROWSER_XSS_FILTER = True
