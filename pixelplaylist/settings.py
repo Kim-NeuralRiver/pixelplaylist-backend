@@ -86,15 +86,33 @@ WSGI_APPLICATION = 'pixelplaylist.wsgi.application'
 DATABASES = {
     "default": dj_database_url.config(
         default=os.getenv("DATABASE_URL", ""),
-        conn_max_age=600, 
+        conn_max_age=30, # Reduced to prevent timeout issues
         conn_health_checks=True,
+        options={
+            'MAX_CONNS': 20,
+            'OPTIONS': {
+                'connect_timeout': 10, #reduced 
+                'application_name': 'pixelplaylist-backend', # added application name for good logging practice
+            } 
+        }
     )
 }
 
+# DB retry config for prod
+
+if not DEBUG:
+    DATABASES['default']['OPTIONS'] = DATABASES['default'].get('OPTIONS', {})
+    DATABASES['default']['OPTIONS'].update({
+        'connect_timeout': 10,  # Reduced timeout for production
+        'options': '-c default_transaction_isolation=serializable' # Use serializable isolation level for better consistency
+    })
+
 # JWT setting
 SIMPLE_JWT = {
-    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=5),
-    "REFRESH_TOKEN_LIFETIME": timedelta(days=1),
+    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=15),
+    "REFRESH_TOKEN_LIFETIME": timedelta(days=7),
+    "ROTATE_REFRESH_TOKENS": True,  # Allow rotation of refresh tokens
+    "BLACKLIST_AFTER_ROTATION": True,  # Blacklist old refresh tokens after rotation
 }
 
 AUTH_PASSWORD_VALIDATORS = [
