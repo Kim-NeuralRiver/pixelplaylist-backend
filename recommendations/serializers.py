@@ -81,8 +81,13 @@ class EmailTokenObtainPairSerializer(TokenObtainPairSerializer):
     username_field = User.EMAIL_FIELD
     
     def validate(self, attrs):
-        # rename emailto username for compatibility with TokenObtainPairSerializer
-        attrs['username'] = attrs.pop('email')
+        email = attrs.get("email")
+        if not email:
+            raise serializers.ValidationError({"email": "This field is required."})
+
+        attrs["username"] = email
+        attrs.pop("email", None)
+        
         return super().validate(attrs)
     
     def get_token(self, user):
