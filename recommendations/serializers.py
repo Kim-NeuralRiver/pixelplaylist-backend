@@ -78,10 +78,11 @@ class GameRecommendationInputSerializer(serializers.Serializer):
 # Custom serializer for email/pass as well as user/pass login
 
 class EmailTokenObtainPairSerializer(TokenObtainPairSerializer):
+    email = serializers.EmailField()
     
     def validate(self, attrs):
-        email = self.initial_data.get("email")
-        password = self.initial_data.get("password")
+        email = attrs.get("email")
+        password = attrs.get("password")
         
         if not email:
             raise serializers.ValidationError({"email": "This field is required."})
