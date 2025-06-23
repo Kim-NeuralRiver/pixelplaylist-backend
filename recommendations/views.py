@@ -389,7 +389,7 @@ class GamePlaylistListCreate(generics.ListCreateAPIView): # Save playlists to th
         
 # Custom email token obtain view for registration
 
-class EmailTokenObtainView(TokenObtainPairView):
+class EmailTokenObtainPairView(TokenObtainPairView):
     serializer_class = EmailTokenObtainPairSerializer 
     
     @swagger_auto_schema(
