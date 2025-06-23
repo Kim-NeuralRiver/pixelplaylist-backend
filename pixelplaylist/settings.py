@@ -85,7 +85,7 @@ WSGI_APPLICATION = 'pixelplaylist.wsgi.application'
 # Database
 DATABASES = {
     "default": dj_database_url.config(
-        default=os.getenv("DATABASE_URL", ""),
+        default=os.getenv("DATABASE_URL", ""), 
         conn_max_age=30, # Reduced to prevent timeout issues
         conn_health_checks=True
     )

@@ -1,7 +1,10 @@
 # Defines how data from the GamePlaylist model is serialized into JSON for the frontend, double checking this today
 from rest_framework import serializers
+from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from .models import GamePlaylist
 from django.contrib.auth.models import User
+from django.utils.translation import gettext_lazy as _
+
 
 class GamePlaylistSerializer(serializers.ModelSerializer):
     class Meta:
@@ -70,3 +73,19 @@ class GameRecommendationInputSerializer(serializers.Serializer):
         default=100,
         min_value=0,
     )
+    
+    
+# Custom serializer for email/pass as well as user/pass login
+
+class EmailTokenObtainPairSerializer(TokenObtainPairSerializer):
+    username_field = User.EMAIL_FIELD
+    
+    def validate(self, attrs):
+        # rename emailto username for compatibility with TokenObtainPairSerializer
+        attrs['username'] = attrs.pop('email')
+        return super().validate(attrs)
+    
+    def get_token(self, user):
+        token = super().get_token(user)
+        token['email'] = user.email
+        return token
