@@ -80,16 +80,15 @@ class GameRecommendationInputSerializer(serializers.Serializer):
 class EmailTokenObtainPairSerializer(TokenObtainPairSerializer):
     
     def validate(self, attrs):
-        email = attrs.get("email")
-        password = attrs.get("password")
+        email = self.initial_data.get("email")
+        password = self.initial_data.get("password")
         
         if not email:
             raise serializers.ValidationError({"email": "This field is required."})
         if not password: 
             raise serializers.ValidationError({"password": "This field is required."})
             
-        attrs["username"] = email
-        attrs.pop("email", None)
+        attrs["username"] = email # Use email as username workaround for JWT
         
         return super().validate(attrs)
     
