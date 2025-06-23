@@ -8,12 +8,13 @@ from rest_framework import status
 from rest_framework import generics, permissions
 from rest_framework.permissions import IsAuthenticated
 from rest_framework import serializers
+from rest_framework_simplejwt.views import TokenObtainPairView
 from .services.igdb_service import query_igdb_games, IGDBServiceError # Services imports
 from .services.genre_service import fetch_igdb_genres, GenreServiceError
 from .services.price_service import get_game_price, get_game_id, ITADServiceError
 from .services.openai_service import generate_game_blurb, OpenAIServiceError
 from .models import GamePlaylist
-from .serializers import GamePlaylistSerializer, UserCreateSerializer, GameRecommendationInputSerializer # Serializer imports
+from .serializers import GamePlaylistSerializer, UserCreateSerializer, GameRecommendationInputSerializer, EmailTokenObtainPairSerializer # Serializer imports
 import logging
 import requests 
 from concurrent.futures import ThreadPoolExecutor, as_completed # For concurrent processing
@@ -384,4 +385,31 @@ class GamePlaylistListCreate(generics.ListCreateAPIView): # Save playlists to th
         return GamePlaylist.objects.filter(user=self.request.user)
 
     def perform_create(self, serializer): # Create / Save playlist with user data
-        serializer.save(user=self.request.user) # Users only see their own data             raise ValidationError({"detail": "Both 'name' and 'games' are necessary to create a playlist."})
+        serializer.save(user=self.request.user) # Users only see their own data        
+        
+# Custom email token obtain view for registration
+
+class EmailTokenObtainView(TokenObtainPairView):
+    serializer_class = EmailTokenObtainPairSerializer 
+    
+    @swagger_auto_schema(
+        request_body=EmailTokenObtainPairSerializer, 
+        operation_description="Obtain JWT token pair using email and password",
+        responses={
+            200: openapi.Response("JWT Token Pair"),
+            400: openapi.Response(
+                description="Invalid credentials",
+                schema=openapi.Schema(
+                    type=openapi.TYPE_OBJECT,
+                    properties={
+                        'detail': openapi.Schema(type=openapi.TYPE_STRING, description="Error message"),
+                        'non_field_errors': openapi.Schema(type=openapi.TYPE_ARRAY, items=openapi.Items(type=openapi.TYPE_STRING), description="List of validation errors")
+                    }
+                )
+            ),
+            }
+        
+    )
+    def post(self, request, *args, **kwargs):
+        return super().post(request, *args, **kwargs)
+    
