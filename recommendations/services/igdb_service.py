@@ -82,8 +82,9 @@ def query_igdb_games(genre_ids: List[int], platform_id: List[int], limit=10) -> 
     query = f"""
     fields name, cover.image_id, platforms.name, summary, genres.name;
     where genres = ({genre_list}) & platforms = ({platform_list}); 
-    sort popularity desc;
-    limit {limit};
+    sort popularity desc; 
+    limit {limit}; 
+    filter type = 1;  
     """
     
     try:
