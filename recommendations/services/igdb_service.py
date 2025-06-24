@@ -79,12 +79,15 @@ def query_igdb_games(genre_ids: List[int], platform_id: List[int], limit=10) -> 
     genre_list = ', '.join(map(str, genre_ids))
     platform_list = ', '.join(map(str, platform_id))
     
+    # Only include certain game categories, to avoid irrelevant results
+    allowed_categories = [0, 3, 4, 8, 9 , 10, 11, 12] # main_game, bundle, standalone_expansion, remake, remaster, expanded_game, port, fork
+    category_filter = ' | '.join([f'category = {category}' for category in allowed_categories])
+    
     query = f"""
     fields name, cover.image_id, platforms.name, summary, genres.name;
-    where genres = ({genre_list}) & platforms = ({platform_list}); 
+    where genres = ({genre_list}) & platforms = ({platform_list}) & ({category_filter});
     sort popularity desc; 
     limit {limit}; 
-    filter type = 1;  
     """
     
     try:
