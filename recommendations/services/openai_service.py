@@ -39,7 +39,7 @@ def generate_game_blurb(game: Dict) -> str:
         f"- Be upbeat, intelligent, and reader-friendly\n"
         f"- Avoid clichés like 'a must-play' or 'you won’t regret it'\n"
         f"- Avoid spoilers\n\n"
-        f"Respond only with the recommendation blurb. Do not include quotes or labels like 'Recommendation:'."
+        f"Respond only with the recommendation blurb. Do not include quotes or labels like 'Recommendation:', or *Title*."
     )
 
     try:
