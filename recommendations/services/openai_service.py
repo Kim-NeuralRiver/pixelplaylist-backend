@@ -32,6 +32,7 @@ def generate_game_blurb(game: Dict) -> str:
         f"Summary: {summary}\n\n"
         f"Your response should:\n"
         f"- Be concise but use descriptive sentences\n"
+        f"- Be between 50 and 85 words\n"
         f"- Use an off-beat opening line, ensuring it is engaging specific to the game.\n"
         f"- Reference the genre(s) in a natural way, making it feel specific to the game discovery query.\n"
         f"- Highlight why the game is appealing (gameplay, story, tone, uniqueness, art style)\n"
