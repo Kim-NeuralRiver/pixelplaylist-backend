@@ -375,7 +375,8 @@ class GamePlaylistListCreate(generics.ListCreateAPIView): # Save playlists to th
             201: "Playlist created successfully",
             200: "List of user's playlists",
             400: "Invalid input",
-            401: "Unauthorized"
+            401: "Unauthorized",
+            500: "Internal server error"
         }
     )
    # def post(self, request, *args, **kwargs): # Handle playlist creation
@@ -383,6 +384,42 @@ class GamePlaylistListCreate(generics.ListCreateAPIView): # Save playlists to th
 
     def get_queryset(self): # Retrieve playlists
         return GamePlaylist.objects.filter(user=self.request.user)
+    
+    def create(self, request, *args, **kwargs):
+        try: 
+            # val playlist size - should be unnecessary as hard limit is 5 but just in case
+            games_data = request.data.get('games', [])
+            if len(games_data) > 7:
+                return Response(
+                    {"error": "Playlist cannot exceed 7 games."},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+           
+            for i, game in enumerate(games_data):
+               if not game.get('title'):
+                   return Response(
+                       {"error": f"Game at index {i} is missing a title."},
+                       status=status.HTTP_400_BAD_REQUEST
+                   )
+                   
+            serializer = self.get_serializer(data=request.data)
+            serializer.is_valid(raise_exception=True) # Validate input data
+            self.perform_create(serializer) # Save the playlist
+            headers = self.get_success_headers(serializer.data) # Get headers for response
+            return Response(
+                serializer.data, 
+                status=status.HTTP_201_CREATED, 
+                headers=headers
+                ) # Return created playlist data with 201 status
+            
+        except serializers.ValidationError as e:
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            logger.error(f"Error creating playlist: {str(e)}", exc_info=True)
+            return Response(
+                {"error": "An internal server error occurred while creating the playlist."},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
 
     def perform_create(self, serializer): # Create / Save playlist with user data
         serializer.save(user=self.request.user) # Users only see their own data        
