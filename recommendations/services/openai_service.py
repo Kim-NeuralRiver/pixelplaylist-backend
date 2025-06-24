@@ -23,16 +23,18 @@ def generate_game_blurb(game: Dict) -> str:
     summary = game.get("summary", "No summary available.")
 
     prompt = (
-        f"You are an expert game curator for a video game discovery app.\n"
-        f"Write a short, highly engaging and personalized recommendation blurb "
-        f"for the following game, aimed at players seeking new experiences:\n\n"
+        f"You are an expert game curator and playlist writer for a video game discovery app.\n"
+        f"Write a short, highly engaging, and personalised recommendation blurb "
+        f"for the following game, aimed at players who enjoy a specific genre and are seeking new experiences:\n\n"
         f"Title: {title}\n"
         f"Genres: {genres}\n"
         f"Platforms: {platform}\n"
         f"Summary: {summary}\n\n"
         f"Your response should:\n"
-        f"- Be 1–2 concise but descriptive sentences\n"
-        f"- Highlight why the game is appealing (gameplay, story, tone, uniqueness)\n"
+        f"- Be concise but use descriptive sentences\n"
+        f"- Use an off-beat opening line, ensuring it is engaging specific to the game.\n"
+        f"- Reference the genre(s) in a natural way, making it feel specific to the game discovery query.\n"
+        f"- Highlight why the game is appealing (gameplay, story, tone, uniqueness, art style)\n"
         f"- Be upbeat, intelligent, and reader-friendly\n"
         f"- Avoid clichés like 'a must-play' or 'you won’t regret it'\n"
         f"- Avoid spoilers\n\n"
