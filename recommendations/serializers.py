@@ -10,13 +10,14 @@ class GamePlaylistSerializer(serializers.ModelSerializer):
     class Meta:
         model = GamePlaylist
         fields = ['id', 'name', 'games', 'created_at', 'user']
-        read_only_fields = ['id', 'created_at', 'user']
+        read_only_fields = ['id', 'created_at', 'user'] # 
         
 
 # User create serializer using Django's built in user model 
 class UserCreateSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True, min_length=8)
-    name = serializers.CharField(required=False, allow_blank=True)  # Optional name field
+    # 'name' is a virtual field used for user creation, not stored in the User model
+    name = serializers.CharField(required=False, allow_blank=True, help_text="Full name (not stored in User model, split into first_name and last_name).")
     
     class Meta:
         model = User
@@ -81,15 +82,18 @@ class EmailTokenObtainPairSerializer(TokenObtainPairSerializer):
     email = serializers.EmailField()
     
     def validate(self, attrs):
-        email = attrs.get("email")
-        password = attrs.get("password")
+        email = self.initial_data.get("email")
+        password = self.initial_data.get("password")
         
         if not email:
             raise serializers.ValidationError({"email": "This field is required."})
         if not password: 
             raise serializers.ValidationError({"password": "This field is required."})
             
-        attrs["username"] = email # Use email as username workaround for JWT
+        # Workaround: Set 'username' to the email for JWT authentication.
+        # Note: This assumes that the username and email are always the same.
+        # If usernames and emails diverge, this may cause authentication issues.
+        attrs["username"] = email
         
         return super().validate(attrs)
     
