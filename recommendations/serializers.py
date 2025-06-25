@@ -53,7 +53,25 @@ class UserCreateSerializer(serializers.ModelSerializer):
             
         return user
     
-# New serializer for validating input to GameRecommendationView
+# User create serializer
+class UserProfileSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = ['id', 'username', 'email', 'first_name']
+        read_only_fields = ['id', 'username']
+ 
+ # Change pass serializer       
+class ChangePasswordSerializer(serializers.Serializer):
+    old_password = serializers.CharField(required=True)
+    new_password1 = serializers.CharField(required=True, min_length=8)
+    new_password2 = serializers.CharField(required=True, min_length=8)
+    
+    def validate_new_password2(self,value):
+        if value != self.initial_data.get('new_password1'):
+            raise serializers.ValidationError("New passwords do not match.")
+        return value
+    
+# serializer for validating input to GameRecommendationView
 # Ensures that genres is a list of ints, platform is an int, and budget is non-negative (number)
 class GameRecommendationInputSerializer(serializers.Serializer):
     genres = serializers.ListField(
