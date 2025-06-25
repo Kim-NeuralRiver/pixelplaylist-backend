@@ -2,6 +2,8 @@
 from drf_yasg.utils import swagger_auto_schema
 from drf_yasg import openapi
 from django.contrib.auth.models import User
+from django.contrib.auth import update_session_auth_hash
+from django.contrib.auth.forms import PasswordChangeForm
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
@@ -9,12 +11,13 @@ from rest_framework import generics, permissions
 from rest_framework.permissions import IsAuthenticated
 from rest_framework import serializers
 from rest_framework_simplejwt.views import TokenObtainPairView
+from rest_framework.throttling import UserRateThrottle
 from .services.igdb_service import query_igdb_games, IGDBServiceError # Services imports
 from .services.genre_service import fetch_igdb_genres, GenreServiceError
 from .services.price_service import get_game_price, get_game_id, ITADServiceError
 from .services.openai_service import generate_game_blurb, OpenAIServiceError
 from .models import GamePlaylist
-from .serializers import GamePlaylistSerializer, UserCreateSerializer, GameRecommendationInputSerializer, EmailTokenObtainPairSerializer # Serializer imports
+from .serializers import GamePlaylistSerializer, UserCreateSerializer, GameRecommendationInputSerializer, EmailTokenObtainPairSerializer, UserProfileSerializer, ChangePasswordSerializer # Serializer imports
 import logging
 import requests 
 from concurrent.futures import ThreadPoolExecutor, as_completed # For concurrent processing
@@ -67,7 +70,125 @@ class UserCreateView(generics.CreateAPIView):
                 {"detail": "User creation failed. Please try again."},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
+
+# API endpoint to allow users to view and update their profile info    
+class UserProfileView(APIView): 
+    permission_classes = [IsAuthenticated] # Ensure only authenticated users can access this view   
     
+    swagger_auto_schema(
+        operation_description="Get user profile info and update if needed",
+        responses={
+            200: openapi.Response(
+                description="User profile data",
+                schema=UserProfileSerializer
+            ),
+            401: "Not authenticated"
+        }
+    )
+    # Return user profile info
+    def get(self, request):
+        user = request.user 
+        serializer = UserProfileSerializer(user)
+        return Response(serializer.data, status=status.HTTP_200_OK) # Return user profile data
+    
+    @swagger_auto_schema(
+        operation_description="Update user profile info",
+        request_body=UserProfileSerializer,
+        responses={
+            200: openapi.Response(
+                description="Profile updated successfully",
+                schema=UserProfileSerializer
+            ),
+            400: "Invalid input data",
+            401: "Not authenticated",
+        }
+    )
+    # Update profile info
+    def patch(self, request):
+        user = request.user
+        serializer = UserProfileSerializer(user, data=request.data, partial=True) # Allow partial updates
+        
+        if serializer.is_valid():
+            new_email = serializer.validated_data.get('email') # Get new email if provided
+            if new_email and new_email != user.email:
+                if User.objects.filter(email=new_email).exists():
+                    return Response(
+                        {"email": ["A user with this email already exists."]},
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
+            
+            try:
+                serializer.save()
+                return Response(serializer.data, status=status.HTTP_200_OK) # Return updated profile data
+            except Exception as e:
+                logger.error(f"Failed to update user profile: {e}", exc_info=True)
+                return Response(
+                    {"detail": "Failed to update profile."},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+                
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
+# Throttle password change class to prevent brute force attacks 
+class PasswordChangeRateThrottle(UserRateThrottle):
+    rate = '5/hour' # If you need to change more than that, consider sticky notes
+    scope = 'password_change' 
+            
+# API endpoint to change user password
+class ChangePasswordView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+    throttle_classes = [PasswordChangeRateThrottle] # Rate limit, see above
+    
+    @swagger_auto_schema(
+        operation_description="Change user password",
+        request_body=ChangePasswordSerializer,
+        responses={
+            200: openapi.Response(
+                description="Password changed successfully",
+                schema=openapi.Schema(
+                    type=openapi.TYPE_OBJECT,
+                    properties={
+                        'detail': openapi.Schema(type=openapi.TYPE_STRING, description="Success message")
+                    }
+                )
+            ),
+            400: "Invalid input or passwords don't match",
+            401: "Not authenticated",
+            429: "Too many attempts, please try again later.",
+        }
+    )
+    # Change user password 
+    def post(self, request):
+        serializer = ChangePasswordSerializer(data=request.data)
+        
+        if serializer.is_valid():
+            user = request.user
+            old_password = serializer.validated_data.get('old_password')
+            new_password = serializer.validated_data.get('new_password1')
+            
+            # Check is old pass is correct
+            if not user.check_password(old_password):
+                return Response(
+                    {"old_password": ["Current password is incorrect."]},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+                
+            # Set new pass and update session 
+            user.set_password(new_password)
+            user.save()
+            
+            # Keep log in
+            update_session_auth_hash(request, user)
+            
+            # Log pass change (hide actual passes though)
+            logger.info(f"Password changed successfully for user {user.username} (ID: {user.id})")
+            
+            return Response(
+                {"detail": "Password changed successfully."},
+                status=status.HTTP_200_OK
+            )
+            
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST) # Return validation errors if any
     
 # API view to handle Post requests for game recommendations
 # Needs JSON payload with 'genres' (IDs), platform (ID), and 'budget' (enriched using ITAD price data)
