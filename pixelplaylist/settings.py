@@ -149,7 +149,7 @@ if DEBUG:
 else:
     CORS_ALLOWED_ORIGINS = [
         "https://pixelplaylist.onrender.com",
-        "https://pixelplaylist-4rgjaehs9-kims-projects-6e7fcba5.vercel.app",
+        "https://pixelplaylist-fjgi74ik5-kims-projects-6e7fcba5.vercel.app",
         "https://pixelplaylist.vercel.app",  
     ]
     CORS_ALLOW_CREDENTIALS = True
@@ -180,7 +180,7 @@ CORS_ALLOW_HEADERS = [
 if not DEBUG:
     CSRF_TRUSTED_ORIGINS = [
         "https://pixelplaylist.onrender.com",
-        "https://pixelplaylist-4rgjaehs9-kims-projects-6e7fcba5.vercel.app",  
+        "https://pixelplaylist-fjgi74ik5-kims-projects-6e7fcba5.vercel.app",  
         "https://pixelplaylist.vercel.app",  #
     ]
 
