@@ -31,21 +31,24 @@ def generate_game_blurb(game: Dict) -> str:
         f"Platforms: {platform}\n"
         f"Summary: {summary}\n\n"
         f"Your response should:\n"
-        f"- Be concise but use descriptive sentences\n"
-        f"- Be between 50 and 85 words\n"
+        f"- Be concise but use descriptive sentences.\n"
+        f"- Start with an innovative opening line that captures attention and avoids being repetitive.\n -- Take inspiration from the following choice of opening lines:\n 1) 'It's weird. It's wonderful. It will run like smooth, smooth butter on your {platform}. \n 2) 'You haven't lived if you haven't [GAME ACTIVITY] while listening to an epic soundtrack like [GAME SOUNDTRACK]. \n 3) 'If George Lucas, Steven King, and [GAME DEVELOPER EXAMPLE] got together to make a game, it might look a little like this. \n 4) 'Stop! If you're looking for some hammer time, look no further that {title}. \n 5) 'Simply {title}. This low-budget work-of-art is a labour of love that proves creativity and a dream > cash and giant studios every day of the week. Be prepared to laugh, cry, and be filled with wonder as you sink hours into {title}. \n 6) Do you want to [GAME ACTIVITY] with [ICONIC GAME MECHANIC OR WEAPON], well now you can! \n 7) It's like if [ICONIC DIRECTOR] made a {genres} game, simply just because [DIRECTOR'S PRONOUN] could.\n 8) Budget-friendly doesn't mean boring - this hidden gem punches way above its price tag - especially with the sweet deals we've rooted out for you! \n 9) 'If you like {genres} and you're looking for a sweet new addition to your {platform}, look no further!\n" 
+        f"- Be between 50 and 85 words.\n"
         f"- Use an off-beat opening line, ensuring it is engaging specific to the game.\n"
         f"- Reference the genre(s) in a natural way, making it feel specific to the game discovery query.\n"
-        f"- Highlight why the game is appealing (gameplay, story, tone, uniqueness, art style)\n"
-        f"- Be upbeat, intelligent, and reader-friendly\n"
+        f"- Highlight why the game is appealing (gameplay, story, tone, uniqueness, art style).\n"
+        f"- Specify why the game is good fit for the genres mentioned and the user's specific interests.\n"
+        f"- Explain what makes the game great on the user's platform of choice.\n" 
+        f"- Be upbeat, intelligent, and reader-friendly.\n"
         f"- Avoid clichés like 'a must-play' or 'you won’t regret it'\n"
-        f"- Avoid spoilers\n\n"
-        f"Respond only with the recommendation blurb. Do not include quotes or labels like 'Recommendation:', or *Title*."
+        f"- Avoid spoilers\n"
+        f"- Respond only with the recommendation blurb. Do not include quotes, labels, or placeholders like 'Recommendation:', [GAME DEVELOPER], [GAME ACTIVITY], or *Title*."
     )
 
     try:
         response = client.chat.completions.create(
             model="gpt-4o-mini",
-            messages=[{"role": "user", "content": prompt}],
+            messages=[{"role": "user", "content": prompt}], 
             temperature=0.75,
             max_tokens=100,
             timeout=10  # Set a timeout to prevent hanging requests
