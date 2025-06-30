@@ -59,6 +59,7 @@ def generate_game_blurb(game: Dict, user_query: Dict = None) -> str:
         f"Your response should:\n"
         f"- Be concise but use descriptive sentences.\n"
         f"- Keep to minimum length of 50 words and a maximum length of 85 words.\n"
+        f"- Avoid cutting off the blurb mid-sentence; ensure it is a complete thought.\n"
         f"- Write a unique, original, and engaging opening line. Avoid reusing phrases across different blurbs.\n"
         f"- You may draw inspiration from off-beat, humorous, or cinematic-style openings like these examples: {opening_line_examples}. These are just illustrative – do not copy or reuse them verbatim. Always craft a fresh, original opening tailored to the specific game.\n"
         f"- Vary tone, sentence structure, and focal points between blurbs.\n"
