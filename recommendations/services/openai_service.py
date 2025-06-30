@@ -46,7 +46,7 @@ def generate_game_blurb(game: Dict, user_query: Dict = None) -> str:
         f"9) If you like {genres} and you're looking for a sweet new addition to your {platform}, look no further!\n" 
     )
 
-
+# TO-DO (if all else fails): add previous opening sentence tracking / penalise repetition
     prompt = (
         f"You are an expert game curator and playlist writer for a video game discovery app.\n"
         f"Write a short, highly engaging, and personalised recommendation blurb "
@@ -59,10 +59,13 @@ def generate_game_blurb(game: Dict, user_query: Dict = None) -> str:
         f"Your response should:\n"
         f"- Be concise but use descriptive sentences.\n"
         f"- Keep to minimum length of 50 words and a maximum length of 85 words.\n"
-        f"- Take inspiration from one or more the following choice of opening lines: {opening_line_examples}, feel free to combine the opening lines or add user context specific lines.\n"
+        f"- Write a unique, original, and engaging opening line. Avoid reusing phrases across different blurbs.\n"
+        f"- You may draw inspiration from off-beat, humorous, or cinematic-style openings like these examples: {opening_line_examples}. These are just illustrative – do not copy or reuse them verbatim. Always craft a fresh, original opening tailored to the specific game.\n"
+        f"- Vary tone, sentence structure, and focal points between blurbs.\n"
+        f"- Occasionally adopt the tone of a film trailer, tour guide, recipe, personal diary, surreal travel guide, or enthusiastic friend; choose whatever best suits the game. Just make sure it feels authentic.\n" 
         f"- If user context is provided, tailer the blurb to their specific search criteria and budget, specify why the game is good fit for the genres mentioned and the user's specific interests.\n"
         f"- Use an off-beat opening line, ensuring it is engaging specific to the game.\n"
-        f"- Reference the genre(s) in a natural way, making it feel specific to the game discovery query.\n"
+        f"- Reference the genre(s) in a natural and varied way; feel free to hint at them through themes, tone, or mechanics instead of always naming them directly.\n"
         f"- Highlight why the game is appealing (gameplay, story, tone, uniqueness, art style).\n"
         f"- Explain what makes the game great on the user's platform of choice.\n"
         f"- Be upbeat, intelligent, and reader-friendly.\n"
@@ -70,7 +73,11 @@ def generate_game_blurb(game: Dict, user_query: Dict = None) -> str:
         f"- Avoid spoilers\n"
         f"- Respond only with the recommendation blurb. Do not include quotes, labels, or any placeholder text (such as [GAME DEVELOPER], [GAME ACTIVITY], *Title*, or similar)."
         f"- Fill in any placeholder text (for example, [GAME DEVELOPER], [GAME ACTIVITY], [GAME SOUNDTRACK], [ICONIC GAME MECHANIC OR WEAPON]) with relevant information, (e.g. 'Rockstar Games', 'shoot zombies with a shotgun', 'thrilling heavy metal soundtrack', 'katana').\n"
+        f"- Each blurb should start with a *distinct*, game-specific hook. Avoid reusing phrases across blurbs, especially in the opening sentence.\n"
+        f"- Do not reuse wording from previous blurbs. Vary tone, phrasing, sentence structure, and focal points (e.g. theme, mechanics, tone, art style).\n"
+        f"- Avoid starting with phrases like 'Stop! If you're looking for...' or '[Title] is a...' unless it is highly customised and fits the game (e.g. 'Warhammer' might fit the 'hammer time' opening).\n"
     )
+    
 
     try:
         response = client.chat.completions.create(
