@@ -8,7 +8,7 @@ class OpenAIServiceError(RuntimeError):
     """Custom exception for errors specifically from the OpenAI service."""
     pass
 
-def generate_game_blurb(game: Dict) -> str:
+def generate_game_blurb(game: Dict, user_query: Dict = None) -> str:
     api_key = os.getenv("OPENAI_API_KEY")
     if not api_key:
         raise OpenAIServiceError("OPENAI_API_KEY not set in environment variables.")
@@ -21,6 +21,19 @@ def generate_game_blurb(game: Dict) -> str:
     genres = ",".join(game.get("genres", [])) or "Various Genres"
     platform = ",".join(game.get("platform", [])) or "Various Platforms"
     summary = game.get("summary", "No summary available.")
+    user_context = ""
+    if user_query:
+        requested_genres = user_query.get("genres", [])
+        requested_platform = user_query.get("platform")
+        budget = user_query.get("budget")
+        
+        if requested_genres:
+            user_context += f"The user specifically searched for {', '.join(requested_genres)} games. "
+        if requested_platform:
+            user_context += f"They are looking for games available on {requested_platform}. "
+        if budget: 
+            user_context += f"Their budget is {budget}. "
+    
     opening_line_examples = (        
         f"1) It's weird. It's wonderful. It will run like smooth, smooth butter on your {platform}.\n" 
         f"2) You haven't lived if you haven't [GAME ACTIVITY] while listening to an epic soundtrack like [GAME SOUNDTRACK].\n" 
@@ -41,16 +54,16 @@ def generate_game_blurb(game: Dict) -> str:
         f"Title: {title}\n"
         f"Genres: {genres}\n"
         f"Platforms: {platform}\n"
-        f"Summary: {summary}\n\n"
+        f"Summary: {summary}\n"
+        f"{f'User Context: {user_context}' if user_context else ''}\n\n"
         f"Your response should:\n"
         f"- Be concise but use descriptive sentences.\n"
-        f"- Start with an innovative opening line that captures attention and avoids being repetitive.\n"
-        f"-- Take inspiration from the following choice of opening lines: {opening_line_examples}\n"
-        f"- Be between 50 and 85 words.\n"
+        f"- Keep to minimum length of 50 words and a maximum length of 85 words.\n"
+        f"- Take inspiration from the following choice of opening lines: {opening_line_examples}\n"
+        f"- If user context is provided, tailer the blurb to their specific search criteria and budget, specify why the game is good fit for the genres mentioned and the user's specific interests.\n"
         f"- Use an off-beat opening line, ensuring it is engaging specific to the game.\n"
         f"- Reference the genre(s) in a natural way, making it feel specific to the game discovery query.\n"
         f"- Highlight why the game is appealing (gameplay, story, tone, uniqueness, art style).\n"
-        f"- Specify why the game is good fit for the genres mentioned and the user's specific interests.\n"
         f"- Explain what makes the game great on the user's platform of choice.\n"
         f"- Be upbeat, intelligent, and reader-friendly.\n"
         f"- Avoid clichés like 'a must-play' or 'you won’t regret it'\n"

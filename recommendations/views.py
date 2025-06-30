@@ -272,7 +272,7 @@ class GameRecommendationView(APIView):
             with ThreadPoolExecutor(max_workers=5) as executor: # Limit concurrent API calls
                 # Submit enrichment task for each game
                 future_to_game = { 
-                    executor.submit(self._enrich_game_data, game.copy(), budget): game # Use copy to avoid modifying original game data
+                    executor.submit(self._enrich_game_data, game.copy(), budget, platform_id): game 
                     for game in initial_games 
                 }
 
@@ -333,7 +333,7 @@ class GameRecommendationView(APIView):
             )
 
     # Enrich game dict with price and blurb info, used by ThreadPoolExecutor
-    def _enrich_game_data(self, game: dict, budget: float) -> dict:
+    def _enrich_game_data(self, game: dict, budget: float, platform_id) -> dict:
         
         title = game.get("title") 
         if not title:
@@ -392,7 +392,12 @@ class GameRecommendationView(APIView):
 
         # Add OpenAI generated blurb (only once)
         try: 
-            game["blurb"] = generate_game_blurb(game)
+            user_query_context = {
+                "genres": [str(g) for g in game.get("genres", [])], # Convert genre IDs to strings
+                "platform": platform_id,
+                "budget": budget,
+            }
+            game["blurb"] = generate_game_blurb(game, user_query_context)
         except OpenAIServiceError as blurb_error:
             logger.warning(f"Blurb generation failed for '{title}': {str(blurb_error)}")
             game["blurb"] = f"Blurb generation failed. Please try again later."
