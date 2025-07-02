@@ -147,11 +147,7 @@ if DEBUG:
     CORS_ALLOW_ALL_ORIGINS = True
     CORS_ALLOW_CREDENTIALS = True
 else:
-    CORS_ALLOWED_ORIGINS = [
-        "https://pixelplaylist.onrender.com",
-        "https://pixelplaylist-kl0p87r63-kims-projects-6e7fcba5.vercel.app",
-        "https://pixelplaylist-ai.vercel.app",  
-    ]
+    CORS_ALLOWED_ORIGINS = ["*"]
     CORS_ALLOW_CREDENTIALS = True
     
 # CORS methods
@@ -178,11 +174,7 @@ CORS_ALLOW_HEADERS = [
     
 # CSRF trusted origins:
 if not DEBUG:
-    CSRF_TRUSTED_ORIGINS = [
-        "https://pixelplaylist.onrender.com",
-        "https://pixelplaylist-kl0p87r63-kims-projects-6e7fcba5.vercel.app",  
-        "https://pixelplaylist-ai.vercel.app",  
-    ]
+    CSRF_TRUSTED_ORIGINS = ['*']
 
 # Internal IPs for debug toolbar
 if DEBUG:
