@@ -13,9 +13,7 @@ load_dotenv(BASE_DIR / ".env")
 ENVIRONMENT = os.getenv("DJANGO_ENV", "development")
 
 IS_PRODUCTION = (
-    ENVIRONMENT == "production" or
-    os.getenv("RENDER") or 
-    not os.getenv("DATABASE_URL", "").startswith("sqlite")
+    ENVIRONMENT == "production"
 )
 DEBUG = not IS_PRODUCTION
 
@@ -28,7 +26,7 @@ if DEBUG:
 else:
     ALLOWED_HOSTS = os.getenv(
         "DJANGO_ALLOWED_HOSTS",
-        "pixelplaylist.onrender.com,pixelplaylist-ai.vercel.com"
+        "localhost"
     ).split(",")  # Allow multiple hosts by default
 
 # Installed apps
@@ -185,7 +183,7 @@ CORS_ALLOW_CREDENTIALS = True
     
 # CSRF trusted origins:
 if DEBUG:
-    CSRF_TRUSTED_ORIGINS = ["http://localhost:3000", "http://172.16.3.2:3000"]
+    CSRF_TRUSTED_ORIGINS = ["*"]
     
 if not DEBUG:
     CSRF_TRUSTED_ORIGINS = os.getenv("CSRF_TRUSTED_ORIGINS", "https://pixelplaylist-ai.vercel.com").split(",")
