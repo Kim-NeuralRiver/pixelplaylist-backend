@@ -183,14 +183,14 @@ CORS_ALLOW_CREDENTIALS = True
     
 # CSRF trusted origins:
 if DEBUG:
-    CSRF_TRUSTED_ORIGINS = ["*"]
+    CSRF_TRUSTED_ORIGINS = ["http://localhost:3000", "http://127.0.0.1:3000"]
     
 if not DEBUG:
     CSRF_TRUSTED_ORIGINS = os.getenv("CSRF_TRUSTED_ORIGINS", "https://pixelplaylist-ai.vercel.com").split(",")
 
 # Internal IPs for debug toolbar
 if DEBUG:
-    INTERNAL_IPS = ["172.16.3.2"] # Allow local requests for debug toolbar
+    INTERNAL_IPS = ["127.0.0.1"] # Allow local requests for debug toolbar
 
 # Logging configuration - Updated for prod deployment
 LOGGING = {

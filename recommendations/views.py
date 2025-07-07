@@ -8,7 +8,7 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework import generics, permissions
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework import serializers
 from rest_framework_simplejwt.views import TokenObtainPairView
 from rest_framework.throttling import UserRateThrottle
@@ -30,10 +30,10 @@ logger = logging.getLogger(__name__)
 
 class CorsDebugView(APIView):
 
-    permission_classes = [permissions.AllowAny]
+    permission_classes = [AllowAny]
     def get(self, request):
-        response = JsonResponse({"status": "ok", "message": "CORS headers should be present"})
-        return response
+        return Response({"status": "ok", "message": "CORS headers should be present"})
+    
 
 # User Registration View
 class UserCreateView(generics.CreateAPIView): 
