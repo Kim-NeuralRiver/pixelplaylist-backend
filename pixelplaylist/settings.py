@@ -24,9 +24,12 @@ SECRET_KEY = os.getenv("DJANGO_SECRET_KEY", "fallback-insecure-dev-key")
 
 # Allowed hosts
 if DEBUG:
-    ALLOWED_HOSTS = ["*"] # Allow all hosts in development
+    ALLOWED_HOSTS = ["*"]  # Explicit hosts for development
 else:
-    ALLOWED_HOSTS = os.getenv("DJANGO_ALLOWED_HOSTS", "pixelplaylist.onrender.com").split(",") # Allow multiple hosts
+    ALLOWED_HOSTS = os.getenv(
+        "DJANGO_ALLOWED_HOSTS",
+        "pixelplaylist.onrender.com,pixelplaylist-ai.vercel.com"
+    ).split(",")  # Allow multiple hosts by default
 
 # Installed apps
 INSTALLED_APPS = [
@@ -37,10 +40,9 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'drf_yasg',
-    'rest_framework',
     'corsheaders',
     'recommendations',
-    'rest_framework.authtoken', # Same as below
+    'rest_framework.authtoken', # Enables token-based authentication for DRF
     'dj_rest_auth' # Added this as test for token based authentication
 ]
 
@@ -51,6 +53,7 @@ if DEBUG:
 MIDDLEWARE = [
     "corsheaders.middleware.CorsMiddleware",
     "django.middleware.security.SecurityMiddleware",
+    "whitenoise.middleware.WhiteNoiseMiddleware",  # Added for static file serving
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
@@ -135,7 +138,11 @@ REST_FRAMEWORK = {
 
 # Static files 
 STATIC_URL = '/static/'
-STATIC_ROOT = BASE_DIR / 'static' 
+STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
+STATICFILES_DIRS = [os.path.join(BASE_DIR, 'static')]
+
+# Improved static file serving w WhiteNoise
+STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
 
 # Media files (if needed later)
@@ -144,10 +151,10 @@ MEDIA_ROOT = BASE_DIR / 'media'
 
 # CORS
 if DEBUG:
-    CORS_ALLOW_ALL_ORIGINS = True
-    CORS_ALLOW_CREDENTIALS = True
+    CORS_ALLOW_ALL_ORIGINS = True  
+    CORS_ALLOW_CREDENTIALS = True  
 else:
-    CORS_ALLOWED_ORIGINS = ["*"]
+    CORS_ALLOWED_ORIGINS = os.getenv("CORS_ALLOWED_ORIGINS", "https://pixelplaylist-ai.vercel.com").split(",")
     CORS_ALLOW_CREDENTIALS = True
     
 # CORS methods
@@ -171,14 +178,21 @@ CORS_ALLOW_HEADERS = [
     'x-csrftoken',
     'x-requested-with',
 ]
+
+CORS_EXPOSE_HEADERS = []
+
+CORS_ALLOW_CREDENTIALS = True
     
 # CSRF trusted origins:
+if DEBUG:
+    CSRF_TRUSTED_ORIGINS = ["http://localhost:3000", "http://172.16.3.2:3000"]
+    
 if not DEBUG:
-    CSRF_TRUSTED_ORIGINS = ['*']
+    CSRF_TRUSTED_ORIGINS = os.getenv("CSRF_TRUSTED_ORIGINS", "https://pixelplaylist-ai.vercel.com").split(",")
 
 # Internal IPs for debug toolbar
 if DEBUG:
-    INTERNAL_IPS = ["127.0.0.1"] # Allow local requests for debug toolbar
+    INTERNAL_IPS = ["172.16.3.2"] # Allow local requests for debug toolbar
 
 # Logging configuration - Updated for prod deployment
 LOGGING = {
@@ -237,7 +251,7 @@ if not DEBUG:
     SECURE_HSTS_PRELOAD = True
 
 # Default auto field
-DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'  
+DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # Swagger settings for Auth testing:
 

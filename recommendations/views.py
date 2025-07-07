@@ -21,9 +21,19 @@ from .serializers import GamePlaylistSerializer, UserCreateSerializer, GameRecom
 import logging
 import requests 
 from concurrent.futures import ThreadPoolExecutor, as_completed # For concurrent processing
+from django.http import JsonResponse
 
 # Logger instantiation for the module
 logger = logging.getLogger(__name__)
+
+# Debugging view
+
+class CorsDebugView(APIView):
+
+    permission_classes = [permissions.AllowAny]
+    def get(self, request):
+        response = JsonResponse({"status": "ok", "message": "CORS headers should be present"})
+        return response
 
 # User Registration View
 class UserCreateView(generics.CreateAPIView): 
@@ -70,6 +80,7 @@ class UserCreateView(generics.CreateAPIView):
                 {"detail": "User creation failed. Please try again."},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
+
 
 # API endpoint to allow users to view and update their profile info    
 class UserProfileView(APIView): 

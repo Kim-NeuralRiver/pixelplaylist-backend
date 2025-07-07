@@ -22,7 +22,8 @@ from drf_yasg import openapi
 from rest_framework import permissions
 from django.conf import settings
 from django.conf.urls.static import static
-from recommendations.views import EmailTokenObtainPairView
+from recommendations.views import EmailTokenObtainPairView, CorsDebugView
+
 
 schema_view = get_schema_view(
     openapi.Info(
@@ -38,8 +39,8 @@ schema_view = get_schema_view(
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('api/token/', EmailTokenObtainPairView.as_view(), name='token_obtain_pair'), # Auth, special email pair view
-    path('api/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
     path('api/', include('recommendations.urls')), # App level urls
+    path('api/cors-debug/', CorsDebugView.as_view, name='cors-debug'), # Temporary CORS debug view
     path('swagger/', schema_view.with_ui('swagger', cache_timeout=0), name='schema-swagger-ui'), # Swagger UI
     path('redoc/', schema_view.with_ui('redoc', cache_timeout=0), name='schema-redoc'),
 ]
