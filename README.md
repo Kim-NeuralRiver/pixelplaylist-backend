@@ -1,6 +1,18 @@
 # PixelPlaylistAI Backend
 
-This is the Django backend for the PixelPlaylistAI project. It handles user authentication, game recommendation generation, playlist saving, and communication with external APIs like IGDB, IsThereAnyDeal, and OpenAI.
+This is the Django backend for the PixelPlaylistAI project. It handles user authentication, game recommendation generation, playlist saving, and communication with external APIs like IGDB, IsThereAnyDeal, and OpenAI. 
+
+It is a Django REST API service provides these functions:
+
+- Provides game recommendations based on user preferences (genres, platform, and budget) by integrating with multiple external APIs:
+    - IGDB (Twitch) for game data and genre information
+    - IsThereAnyDeal (ITAD) for price data
+    - OpenAI for generating custom game recommendation blurbs
+- Handles user authentication using Django REST Framework and JWT tokens with email/username login support
+- Allows users to save and retrieve game playlists
+- Features comprehensive error handling and rate limiting for API requests
+- Includes Swagger documentation for API endpoints
+- Implements caching mechanisms to reduce external API calls
 
 ## Requirements
 
