@@ -8,6 +8,7 @@ from .models import GamePlaylist
 from .serializers import GamePlaylistSerializer, UserCreateSerializer
 import json
 from .services.igdb_service import IGDBServiceError
+from .services.price_service import ITADServiceError
 from .services.genre_service import GenreServiceError
 from .services.price_service import PriceServiceError
 from .services.openai_service import OpenAIServiceError
@@ -160,3 +161,133 @@ class AuthenticationTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         
     """End of Authentication Tests"""
+    
+# Game recommendation tests to test functionality using mock external API calls:
+
+class GameRecommendationTests(APITestCase):
+    
+    def setUp(self):
+        self.url = reverse('game-recommendations')
+        self.valid_input = {
+            'genres': [4, 5, 12],
+            'platform': [6],
+            'budget': 50.0
+        }
+        
+    @patch('recommendations.views.query_igdb_games')
+    def test_recommendation_no_games_found(self, mock_query):
+        # Test how system reacts when no games match user's criteria
+        # Helps handling edge cases (which are somewhat hard to replicate irl)
+        # Uses mock to simulate empty api results without making actual API calls
+        
+        # Mock the query_igdb_games to return empty list
+        mock_query.return_value = []
+        
+        # Make req
+        response = self.client.post(self.url, self.valid_input, format='json')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIn('message', response.data)
+        self.assertIn('No games found', response.data['message'])
+        
+        
+    @patch('recommendations.views.query_igdb_games')
+    @patch('recommendations.views.get_game_price')
+    @patch('recommendations.views.get_game_id')
+    @patch('recommendations.views.generate_game_blurb')
+    def test_successful_recommendation(self, mock_blurb, mock_get_id, mock_get_price, mock_query):
+        # Test complete rec pipeline when all ext APIS work correctly
+        # This 'best / normal case' test ensures core functionality works under normal expected conditions
+        # Need to test full integration flow from search to to look/up to blurb gen
+        # Tests all use multiple patches to mock all ext API calls, making them fast and reliable
+
+        # Mock IGDB query to return sample games
+        mock_query.return_value = [
+            {
+                'igdb_id': 123,
+                'title': 'Test Game 1',
+                'cover_url': 'https://example.com/cover1.jpg',
+                'platform': [6],
+                'summary': 'This is a test game',
+                'genres': [3, 4, 5]
+            }
+        ]
+        
+        # Mock ITAD responses
+        mock_get_id.return_value = 'testgame1'
+        mock_get_price.return_value = [
+            {
+                'price': {'amount': 19.99},
+                'shop': {'name': 'Steam'},
+                'cut': 50,
+                'url': 'https://store.steampowered.com/app/123'
+            }
+        ]
+        
+        # Mock OpenAI blurb
+        mock_blurb.return_value = "This game is amazing! And this blurb is totally not a complete repetition of the previous blurb!"
+        
+        # Make request
+        response = self.client.post(self.url, self.valid_input, format='json')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data), 1)
+        self.assertEqual(response.data[0]['title'], 'Test Game 1')
+        self.assertEqual(response.data[0]['blurb'], "This game is amazing! And this blurb is totally not a complete repetition of the previous blurb!")
+        self.assertEqual(response.data[0]['price']['price'], 19.99)
+        
+    @patch('recommendations.views.query_igdb_games')
+    def test_igdb_service_error(self, mock_query):
+        # Test how system handles IGDB API failures
+        # Needs to handle failure gracefully and w/ proper error messages.
+        # Verify we return proper error messages and don't just crash / silently fail
+        
+        # Mock IGDB query to raise error
+        mock_query.side_effect = IGDBServiceError("IGDB API unavailable")
+        
+        # Make request
+        response = self.client.post(self.url, self.valid_input, format='json')
+        self.assertEqual(response.status_code, status.HTTP_424_FAILED_DEPENDENCY)
+        self.assertIn('error', response.data)
+        
+        
+    @patch('recommendations.views.query_igdb_games')
+    @patch('recommendations.views.get_game_id')
+    def test_itad_service_error_handled_gracefully(self, mock_get_id, mock_query):
+        # Test price l/u failure handling, ensures that price l/u failures don't crash the whole rec system
+        # I.e. tests graceful degradation, the ability to return partial results when some components return none#
+        
+        # Mock IGDB query to return sample game
+        mock_query.return_value = [
+            {
+                'igdb_id': 123,
+                'title': 'Test Game 1',
+                'platform': [6],
+                'summary': 'This is a test game',
+                'genres': [3, 4, 5]
+            }
+        ]
+        
+        # Mock ITAD to fail
+        mock_get_id.side_effect = ITADServiceError("ITAD API unavailable")
+        
+        # Make request - should still return game but with price note
+        response = self.client.post(self.url, self.valid_input, format='json')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data), 1)
+        self.assertIn('price_note', response.data[0])
+        
+    def test_invalid_input_validation(self):
+        # Tests how we handle invalid input data (e.g. negative budget value, or above maximum) and ensures they're properly rejected
+        # Ensures data integrity 
+        # Multiple tests / validation scenarios to ensure comprehensive validation 
+        
+        # Test with negative budget
+        invalid_input = self.valid_input.copy()
+        invalid_input['budget'] = -10.0
+        response = self.client.post(self.url, invalid_input, format='json')
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        
+        # Test with empty genres list
+        invalid_input = self.valid_input.copy()
+        invalid_input['genres'] = []
+        response = self.client.post(self.url, invalid_input, format='json')
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
