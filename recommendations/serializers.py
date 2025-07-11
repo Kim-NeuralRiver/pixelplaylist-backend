@@ -97,25 +97,69 @@ class GameRecommendationInputSerializer(serializers.Serializer):
 # Custom serializer for email/pass as well as user/pass login
 
 class EmailTokenObtainPairSerializer(TokenObtainPairSerializer):
-    email = serializers.EmailField()
+    email = serializers.EmailField(required=False) 
+    username = serializers.CharField(required=False)
+
+    # Make username not required after init
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['username'].required = False
     
     def validate(self, attrs):
+        username = self.initial_data.get("username") # added to test new function
         email = self.initial_data.get("email")
         password = self.initial_data.get("password")
         
+        # Check if we have either username or email
+        if not username and not email:
+            raise serializers.ValidationError({
+                "error": "Either username or email is required."
+            })
+        
+        if not password:
+            raise serializers.ValidationError({
+                "password": "This field is required."
+            })
+        
+        """        
         if not email:
             raise serializers.ValidationError({"email": "This field is required."})
         if not password: 
-            raise serializers.ValidationError({"password": "This field is required."})
-            
-        # Workaround: Set 'username' to the email for JWT authentication.
-        # Note: This assumes that the username and email are always the same.
-        # If usernames and emails diverge, this may cause authentication issues.
-        attrs["username"] = email
+            raise serializers.ValidationError({"password": "This field is required."}) 
+        
+        """
+        # Different input scenarios: 
+        
+        if email and not username:        
+        # If email is provided but not username, look up the user by email
+            try:
+                user = User.objects.only('username').get(email=email)
+                attrs["username"] = user.username
+            except User.DoesNotExist:
+                raise serializers.ValidationError({
+                    "email": "No user found with this email address."
+                })
+                
+        # If username is provided and not email, use username directly
+        elif username and not email:
+            attrs["username"] = username
+        # If username and email are both provided, validate they both belong to the same user
+        elif username and email:
+            try:
+                user = User.objects.get(username=username, email=email)
+                attrs["username"] = username
+            except User.DoesNotExist:
+                raise serializers.ValidationError({
+                    "error": "No user found with this username and email combination."
+                })
+                
+        # Ensure attrs has the pass for parent validation
+        attrs['password'] = password
         
         return super().validate(attrs)
     
     def get_token(self, user):
         token = super().get_token(user)
         token['email'] = user.email
+        token['username'] = user.username
         return token

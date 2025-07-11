@@ -10,7 +10,6 @@ import json
 from .services.igdb_service import IGDBServiceError
 from .services.price_service import ITADServiceError
 from .services.genre_service import GenreServiceError
-from .services.price_service import PriceServiceError
 from .services.openai_service import OpenAIServiceError
 
 # Authentication Tests to test functionality:
@@ -40,29 +39,87 @@ class AuthenticationTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         self.assertEqual(User.objects.count(), 2)  # One test user + one new user
         
-    def test_email_login(self):
-        # Verify users can login with email instead of username
-        # This is useful because username function doesn't work right now, so this needs to work
-        url = reverse('token_obtain_pair')
-        data = {
+    def test_email_and_username_login_comprehensive(self):
+        # Test both email and username login paths work and return equivalent results
+        # Test email login
+        email_url = reverse('token_obtain_pair')
+        email_data = {
             'email': 'test@example.com',
             'password': 'testpassword123'
         }
-        response = self.client.post(url, data, format='json')
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertIn('access', response.data)
-        self.assertIn('refresh', response.data)
+        email_response = self.client.post(email_url, email_data, format='json')
         
-    def test_username_login(self):
-        # Tests username-based login
-        # This is useful because username login doesn't work right now, and it needs to work.
-        # This should confirm whether or not JWT token gen works for username auth
-        url = reverse('token_obtain_pair')
-        data = {
+        if email_response.status_code != status.HTTP_200_OK:
+            self.fail(f"Email login failed: {email_response.data}")
+        
+        self.assertIn('access', email_response.data)
+        self.assertIn('refresh', email_response.data)
+        email_access_token = email_response.data['access']
+        
+        # Test username login
+        username_data = {
             'username': 'testuser',
             'password': 'testpassword123'
         }
-        response = self.client.post(url, data, format='json')
+        username_response = self.client.post(email_url, username_data, format='json')
+        
+        if username_response.status_code != status.HTTP_200_OK:
+            self.fail(f"Username login failed: {username_response.data}")
+        
+        self.assertIn('access', username_response.data)
+        self.assertIn('refresh', username_response.data)
+        username_access_token = username_response.data['access']
+        
+        # Verify both tokens work for protected endpoints
+        profile_url = reverse('user-profile')
+        
+        # Test email token
+        self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {email_access_token}')
+        email_profile_response = self.client.get(profile_url)
+        if email_profile_response.status_code != status.HTTP_200_OK:
+            self.fail(f"Profile access with email token failed: {email_profile_response.data}")
+        
+        # Clear previous creds
+        self.client.credentials() 
+        
+        # Test username token
+        self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {username_access_token}')
+        username_profile_response = self.client.get(profile_url) 
+        if username_profile_response.status_code != status.HTTP_200_OK:
+            self.fail(f"Profile access with username token failed: {username_profile_response.data}")
+            
+        # Both should return the same user data
+        self.assertDictEqual(email_profile_response.data, username_profile_response.data)
+        self.assertEqual(email_profile_response.data['username'], 'testuser')
+        self.assertEqual(email_profile_response.data['email'], 'test@example.com')
+        
+    def test_login_edge_cases(self):
+        # Test various edge cases for login auth
+        
+        url = reverse('token_obtain_pair')
+        
+        # Test case 1: Missing password
+        response = self.client.post(url, {'email': 'test@example.com'}, format='json')
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        
+        # Test case 2: Missing email/username
+        response = self.client.post(url, {'password': 'testpassword123'}, format='json')
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        
+        # Test case 3: Empty email
+        response = self.client.post(url, {'email': '', 'password': 'testpassword123'}, format='json')
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        
+        # Test case 4: Empty username
+        response = self.client.post(url, {'username': '', 'password': 'testpassword123'}, format='json')
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        
+        # Test case 5: Both email and username provided (with username taking precedence)
+        response = self.client.post(url, {
+            'email': 'test@example.com',
+            'username': 'testuser',
+            'password': 'testpassword123'
+        }, format='json')
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertIn('access', response.data)
         
@@ -71,11 +128,27 @@ class AuthenticationTests(APITestCase):
         # Fundamental security check
         url = reverse('token_obtain_pair')
         data = {
-            'email': 'testuser',
+            'email': 'test@example.com',
+            'username': 'testuser',  
             'password': 'wrongpassword'
         }
+        
         response = self.client.post(url, data, format='json')
+        
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+        
+    def test_invalid_email_format(self):
+        # Test that ensures invalid email format returns 400 
+        # More for me when testing than for core functionality
+        url = reverse('token_obtain_pair')
+        data = {
+            'email': 'not-an-email',
+            'password': 'testpassword123'
+        }
+        
+        response = self.client.post(url, data, format='json')
+        
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         
     def test_protected_endpoint_access(self):
         # Test accessing protected endpoint both with and without auth
@@ -91,14 +164,29 @@ class AuthenticationTests(APITestCase):
         login_url = reverse('token_obtain_pair')
         login_data = {
             'email': 'test@example.com',
+            'username': 'testuser', 
             'password': 'testpassword123'
         }
         login_response = self.client.post(login_url, login_data, format='json')
+        
+        # More robust login val
+        if login_response.status_code != status.HTTP_200_OK:
+            self.fail(f"Login failed during protected endpoint test: {login_response.data}")
+            
+        if 'access' not in login_response.data:
+            self.fail(f"Access token missing from login response: {login_response.data}")
+                   
         token = login_response.data['access']
+        if not token: 
+            self.fail("Access token is empty after login")
         
         # try again *with* auth
         self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {token}')
         response = self.client.get(url)
+        
+        if response.status_code != status.HTTP_200_OK:
+            self.fail(f"Protected endpoint access failed with valid token, status: {response.status_code}: {response.data}")
+        
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data['username'], 'testuser')
         
@@ -110,10 +198,22 @@ class AuthenticationTests(APITestCase):
         login_url = reverse('token_obtain_pair')
         login_data = {
             'email': 'test@example.com',
-            'password': 'testpassword123'
+            'password': 'testpassword123',
+            'username': 'testuser'  
         }
         login_response = self.client.post(login_url, login_data, format='json')
+        
+        # Robust login val
+        if login_response.status_code != status.HTTP_200_OK:
+            self.fail(f"Login failed during password change test: {login_response.data}")
+            
+        if 'access' not in login_response.data:
+            self.fail(f"Access token missing from login response: {login_response.data}")
+        
         token = login_response.data['access']
+        if not token:
+            self.fail("Access token is empty or None")
+        
         self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {token}')
         
         # Try change pass
@@ -124,15 +224,24 @@ class AuthenticationTests(APITestCase):
             'new_password2': 'newpassword456'
         }
         response = self.client.post(url, data, format='json')
+        
+        if response.status_code != status.HTTP_200_OK:
+            self.fail(f"Password change failed: {response.data}")
+            
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         
         # Verify new pass works
         self.client.credentials() # clear creds
         login_data = {
             'email': 'test@example.com',
+            'username': 'testuser',  
             'password': 'newpassword456'
         }
         response = self.client.post(login_url, login_data, format='json')
+        
+        if response.status_code != status.HTTP_200_OK:
+            self.fail(f"Login with new password failed: {response.data}")
+        
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertIn('access', response.data)
         
@@ -144,10 +253,22 @@ class AuthenticationTests(APITestCase):
         login_url = reverse('token_obtain_pair')
         login_data = {
             'email': 'test@example.com',
-            'password': 'testpassword123'
+            'password': 'testpassword123',
+            'username': 'testuser'  
         }
         login_response = self.client.post(login_url, login_data, format='json')
+        
+        # more login val
+        if login_response.status_code != status.HTTP_200_OK:
+            self.fail(f"Login failed: {login_response.data}")
+            
+        if 'access' not in login_response.data:
+            self.fail(f"Access token missing from login response: {login_response.data}")
+        
         token = login_response.data['access']
+        if not token:
+            self.fail("Access token is empty or None")
+        
         self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {token}')
         
         # Try pass change with incorrect old pass
@@ -205,10 +326,9 @@ class GameRecommendationTests(APITestCase):
             {
                 'igdb_id': 123,
                 'title': 'Test Game 1',
-                'cover_url': 'https://example.com/cover1.jpg',
-                'platform': [6],
+                'platform': ['PC'],  
                 'summary': 'This is a test game',
-                'genres': [3, 4, 5]
+                'genres': ['Action', 'Adventure', 'RPG']  
             }
         ]
         
@@ -260,9 +380,9 @@ class GameRecommendationTests(APITestCase):
             {
                 'igdb_id': 123,
                 'title': 'Test Game 1',
-                'platform': [6],
+                'platform': ['PC'],
                 'summary': 'This is a test game',
-                'genres': [3, 4, 5]
+                'genres': ['Action', 'Adventure', 'RPG']
             }
         ]
         

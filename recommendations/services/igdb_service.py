@@ -120,9 +120,9 @@ def format_igdb_response(games: List[Dict]) -> List[Dict]:
         
         formatted_games.append({
             "igdb_id": game.get('id'), # Include IGDB ID for future reference/linking
-            "title": game.get('name', 'Unknown Title'),  # This should work with your price_service
+            "title": game.get('name', 'Unknown Title'),  # This should work with price_service
             "cover_url": cover_url,
-            "platform": [p.get('name') for p in game.get('platforms', []) if p.get('name')],
+            "platform": [p.get('name') for p in game.get('platforms', []) if p.get('name')], 
             "summary": game.get('summary', ''),
             "genres": [g.get('name') for g in game.get('genres', []) if g.get('name')],
             "release_date": game.get('first_release_date'), # Added for potential future use

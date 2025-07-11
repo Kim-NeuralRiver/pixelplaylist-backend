@@ -38,7 +38,7 @@ schema_view = get_schema_view(
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path('api/token/', EmailTokenObtainPairView.as_view(), name='token_obtain_pair'), # Auth, special email pair view
+    path('api/token/', EmailTokenObtainPairView.as_view(), name='token_obtain_pair'), # Auth
     path('api/', include('recommendations.urls')), # App level urls
     path('api/cors-debug/', CorsDebugView.as_view, name='cors-debug'), # Temporary CORS debug view
     path('swagger/', schema_view.with_ui('swagger', cache_timeout=0), name='schema-swagger-ui'), # Swagger UI
