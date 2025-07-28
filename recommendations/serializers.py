@@ -104,16 +104,35 @@ class EmailTokenObtainPairSerializer(TokenObtainPairSerializer):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields['username'].required = False
+        self.fields['email'].required = False
+        # Remove username from required fields if it exists
+        if hasattr(self.Meta, 'required_fields'):
+            self.Meta.required_fields = []
+            
+    def validate_email(self, value):
+        if value is not None:
+            value = value.strip()
+            if not value:  # Empty after stripping
+                return None
+        return value
+    
+    def validate_username(self, value):
+        if value is not None:
+            value = value.strip()
+            if not value:  # Empty after stripping
+                return None
+        return value
     
     def validate(self, attrs):
-        username = self.initial_data.get("username") # added to test new function
-        email = self.initial_data.get("email")
-        password = self.initial_data.get("password")
+        # Get from initial_data and strip whitespace
+        username = self.initial_data.get("username", "").strip()
+        email = self.initial_data.get("email", "").strip()
+        password = self.initial_data.get("password", "").strip()
         
         # Check if we have either username or email
         if not username and not email:
             raise serializers.ValidationError({
-                "error": "Either username or email is required."
+                "non_field_errors": "Either username or email is required." # changed to standard DRF error format for test
             })
         
         if not password:
@@ -142,7 +161,15 @@ class EmailTokenObtainPairSerializer(TokenObtainPairSerializer):
                 
         # If username is provided and not email, use username directly
         elif username and not email:
-            attrs["username"] = username
+            # Verify username exists
+            try:
+                User.objects.get(username=username)
+                attrs["username"] = username
+            except User.DoesNotExist:
+                raise serializers.ValidationError({
+                    "username": "No user found with this username."
+                })
+                
         # If username and email are both provided, validate they both belong to the same user
         elif username and email:
             try:
@@ -150,7 +177,7 @@ class EmailTokenObtainPairSerializer(TokenObtainPairSerializer):
                 attrs["username"] = username
             except User.DoesNotExist:
                 raise serializers.ValidationError({
-                    "error": "No user found with this username and email combination."
+                    "non_field_errors": "No user found with this username and email combination."
                 })
                 
         # Ensure attrs has the pass for parent validation
