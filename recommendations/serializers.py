@@ -37,11 +37,15 @@ class UserCreateSerializer(serializers.ModelSerializer):
         # Remove name from validated_data if present 
         name = validated_data.pop('name', '')
         
+        print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!1")
+        print(validated_data)
         user = User.objects.create_user(
-            username=validated_data.get('username', ""),
-            email=validated_data.get('email', ""),
+            username=validated_data.get('username', None),
+            email=validated_data.get('email', None),
             password=validated_data['password']
         )
+        print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!2")
+        print(validated_data)
         
         # Store name in first_name and last_name if provided
         if name:
@@ -50,7 +54,9 @@ class UserCreateSerializer(serializers.ModelSerializer):
             if len(name_parts) > 1:
                 user.last_name = name_parts[1]
             user.save()
-            
+        print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!3")
+        print(user)    
+
         return user
     
 # User create serializer
