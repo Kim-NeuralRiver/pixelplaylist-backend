@@ -179,7 +179,7 @@ class GameRecommendationInputSerializer(serializers.Serializer):
 
 class EmailTokenObtainPairSerializer(TokenObtainPairSerializer):
     email = serializers.EmailField(required=False, allow_blank=True) 
-    username = serializers.CharField(required=False, allow_blank=True, allow_empty=True, allow_null=True)
+    username = serializers.CharField(required=False, allow_blank=True)
 
     # Make username not required after init
     def __init__(self, *args, **kwargs):
