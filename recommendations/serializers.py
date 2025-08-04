@@ -38,8 +38,8 @@ class UserCreateSerializer(serializers.ModelSerializer):
         name = validated_data.pop('name', '')
         
         user = User.objects.create_user(
-            username=validated_data['username'],
-            email=validated_data['email'],
+            username=validated_data.get('username', ""),
+            email=validated_data.get('email', ""),
             password=validated_data['password']
         )
         
