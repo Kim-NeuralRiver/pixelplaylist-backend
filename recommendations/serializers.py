@@ -124,7 +124,7 @@ class EmailTokenObtainPairSerializer(TokenObtainPairSerializer):
     
     def validate(self, attrs):
         """
-        Original comment block:
+        Original comment block included for context / fallback:
         Get from initial_data and strip whitespace
         Use already validated and stripped values from attrs
         username = attrs.get("username", "")
@@ -139,7 +139,7 @@ class EmailTokenObtainPairSerializer(TokenObtainPairSerializer):
         """
         
         """
-        Changes in this revised version:
+        Changes made most recently (for debugging purposes):
         1. Better handling of empty strings vs None values
         2. Improved error messaging to clarify that either username OR email is needed
         3. Removed redundant stripping - relying on field-level validation
