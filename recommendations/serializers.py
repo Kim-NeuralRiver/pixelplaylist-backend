@@ -98,7 +98,7 @@ class GameRecommendationInputSerializer(serializers.Serializer):
 
 class EmailTokenObtainPairSerializer(TokenObtainPairSerializer):
     email = serializers.EmailField(required=False, allow_blank=True) 
-    username = serializers.CharField(required=False, allow_blank=True)
+    username = serializers.CharField(required=False, allow_blank=True, allow_empty=True, allow_null=True)
 
     # Make username not required after init
     def __init__(self, *args, **kwargs):
@@ -106,9 +106,8 @@ class EmailTokenObtainPairSerializer(TokenObtainPairSerializer):
         self.fields['username'].required = False
         self.fields['email'].required = False
         # Remove username from required fields if it exists
-        if hasattr(self.Meta, 'required_fields'):
-            self.Meta.required_fields = []
-            
+          
+    # add custom validation methods for sign in
     def validate_email(self, value):
         if value is not None:
             value = value.strip()
@@ -124,33 +123,55 @@ class EmailTokenObtainPairSerializer(TokenObtainPairSerializer):
         return value
     
     def validate(self, attrs):
-        # Get from initial_data and strip whitespace
-        username = self.initial_data.get("username", "").strip()
-        email = self.initial_data.get("email", "").strip()
-        password = self.initial_data.get("password", "").strip()
-        
+        """
+        Original comment block:
+        Get from initial_data and strip whitespace
+        Use already validated and stripped values from attrs
+        username = attrs.get("username", "")
+        email = attrs.get("email", "")
+        password = attrs.get("password", "").strip()
         # Check if we have either username or email
         if not username and not email:
             raise serializers.ValidationError({
-                "non_field_errors": "Either username or email is required." # changed to standard DRF error format for test
+                "username": "This field is required.",
+                "email": "This field is required."
+            })
+        """
+        
+        """
+        Changes in this revised version:
+        1. Better handling of empty strings vs None values
+        2. Improved error messaging to clarify that either username OR email is needed
+        3. Removed redundant stripping - relying on field-level validation
+        4. Removed commented-out code that was no longer relevant
+        5. Simplified the logic flow for cleaner validation
+        """
+        
+        # Use already validated and stripped values from attrs
+        username = attrs.get("username")  # Will be None if not provided, "" if empty string
+        email = attrs.get("email")
+        password = attrs.get("password", "")
+        
+        # Convert empty strings to None after individual field validation
+        if username == "":
+            username = None
+        if email == "":
+            email = None
+        
+        # Check if have either username or email
+        if not username and not email:
+            raise serializers.ValidationError({
+                "username": "Either username or email is required.",
+                "email": "Either username or email is required."
             })
         
         if not password:
             raise serializers.ValidationError({
                 "password": "This field is required."
             })
-        
-        """        
-        if not email:
-            raise serializers.ValidationError({"email": "This field is required."})
-        if not password: 
-            raise serializers.ValidationError({"password": "This field is required."}) 
-        
-        """
+
         # Different input scenarios: 
-        
         if email and not username:        
-        # If email is provided but not username, look up the user by email
             try:
                 user = User.objects.only('username').get(email=email)
                 attrs["username"] = user.username
@@ -159,9 +180,7 @@ class EmailTokenObtainPairSerializer(TokenObtainPairSerializer):
                     "email": "No user found with this email address."
                 })
                 
-        # If username is provided and not email, use username directly
         elif username and not email:
-            # Verify username exists
             try:
                 User.objects.get(username=username)
                 attrs["username"] = username
@@ -170,22 +189,21 @@ class EmailTokenObtainPairSerializer(TokenObtainPairSerializer):
                     "username": "No user found with this username."
                 })
                 
-        # If username and email are both provided, validate they both belong to the same user
         elif username and email:
             try:
                 user = User.objects.get(username=username, email=email)
                 attrs["username"] = username
             except User.DoesNotExist:
                 raise serializers.ValidationError({
-                    "non_field_errors": "No user found with this username and email combination."
+                    "username": "No user found with this username and email combination.",
+                    "email": "No user found with this username and email combination."
                 })
-                
-        # Ensure attrs has the pass for parent validation
+ 
         attrs['password'] = password
-        
         return super().validate(attrs)
     
     def get_token(self, user):
+        # Returns a JWT token for the given user, adding custom claims for email and username.
         token = super().get_token(user)
         token['email'] = user.email
         token['username'] = user.username
