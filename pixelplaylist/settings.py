@@ -192,54 +192,126 @@ if not DEBUG:
 if DEBUG:
     INTERNAL_IPS = ["127.0.0.1"] # Allow local requests for debug toolbar
 
-# Logging configuration - Updated for prod deployment
-LOGGING = {
-    'version': 1,
-    'disable_existing_loggers': False,
-    'formatters': {
-        'verbose': {
-            'format': '{levelname} {asctime} {module} {process:d} {thread:d} {message}',
-            'style': '{',
+# Logging configuration - Optimized for Google Cloud Run
+if IS_PRODUCTION:
+    # Production logging configuration for Cloud Run
+    LOGGING = {
+        'version': 1,
+        'disable_existing_loggers': False,
+        'formatters': {
+            'json': {
+                '()': 'pythonjsonlogger.jsonlogger.JsonFormatter',
+                'format': '%(asctime)s %(name)s %(levelname)s %(message)s',
+                'rename_fields': {
+                    'asctime': 'timestamp',
+                    'levelname': 'severity',
+                }
+            },
         },
-        'simple': {
-            'format': '{levelname} {message}',
-            'style': '{',
+        'handlers': {
+            'console': {
+                'class': 'logging.StreamHandler',
+                'formatter': 'json',
+                'stream': 'ext://sys.stdout',  # Explicitly use stdout
+            },
         },
-    },
-    'handlers': {
-        'console': {
+        'root': {
             'level': 'INFO',
-            'class': 'logging.StreamHandler',
-            'formatter': 'verbose'
+            'handlers': ['console'],
         },
-        # Only use file handler in development when logs directory exists
-        'file': {
-            'level': 'ERROR',
-            'class': 'logging.StreamHandler',  # Changed from FileHandler to StreamHandler to address render issue
-            'formatter': 'verbose',
-        } if DEBUG else {
-            'level': 'ERROR', 
-            'class': 'logging.StreamHandler',
-            'formatter': 'verbose',
-        }
-    },
-    'root': {
-        'handlers': ['console'],
-    },
-    'loggers': {
-        'django': {
+        'loggers': {
+            'django': {
+                'handlers': ['console'],
+                'level': 'INFO',
+                'propagate': False,
+            },
+            'django.request': {
+                'handlers': ['console'],
+                'level': 'INFO',
+                'propagate': False,
+            },
+            'django.db.backends': {
+                'handlers': ['console'],
+                'level': 'WARNING',  # Reduce DB query logging in production
+                'propagate': False,
+            },
+            'recommendations': {
+                'handlers': ['console'],
+                'level': 'INFO',
+                'propagate': False,
+            },
+            # Add specific loggers for your serializers
+            'recommendations.serializers': {
+                'handlers': ['console'],
+                'level': 'INFO',
+                'propagate': False,
+            },
+        },
+    }
+else:
+    # Development logging configuration
+    LOGGING = {
+        'version': 1,
+        'disable_existing_loggers': False,
+        'formatters': {
+            'verbose': {
+                'format': '{levelname} {asctime} {module} {process:d} {thread:d} {message}',
+                'style': '{',
+            },
+            'simple': {
+                'format': '{levelname} {message}',
+                'style': '{',
+            },
+        },
+        'handlers': {
+            'console': {
+                'level': 'DEBUG',
+                'class': 'logging.StreamHandler',
+                'formatter': 'verbose'
+            },
+        },
+        'root': {
             'handlers': ['console'],
             'level': 'INFO',
-            'propagate': False,
         },
-        'recommendations': {
-            'handlers': ['console'],
-            'level': 'DEBUG' if DEBUG else 'INFO',
-            'propagate': False,
+        'loggers': {
+            'django': {
+                'handlers': ['console'],
+                'level': 'INFO',
+                'propagate': False,
+            },
+            'recommendations': {
+                'handlers': ['console'],
+                'level': 'DEBUG',
+                'propagate': False,
+            },
         },
-    },
-}
+    }
+
+# Add custom logging filter to add trace context for Cloud Run
+if IS_PRODUCTION:
+    class CloudRunContextFilter(logging.Filter):
+        """Add Cloud Run trace context to log records."""
+        def filter(self, record):
+            import json
+            # Get trace header from environment or request
+            trace_header = os.environ.get('HTTP_X_CLOUD_TRACE_CONTEXT', '')
+            if trace_header:
+                trace = trace_header.split('/')[0]
+                record.trace = f"projects/{os.environ.get('GOOGLE_CLOUD_PROJECT', 'pixelplaylist')}/traces/{trace}"
+            return True
     
+    # Add the filter to all handlers
+    for handler in LOGGING['handlers'].values():
+        handler.setdefault('filters', []).append('cloud_run_context')
+    
+    LOGGING['filters'] = {
+        'cloud_run_context': {
+            '()': CloudRunContextFilter,
+        }
+    }
+
+# Security settings
 if not DEBUG:
     SECURE_BROWSER_XSS_FILTER = True
     SECURE_CONTENT_TYPE_NOSNIFF = True
@@ -252,7 +324,6 @@ if not DEBUG:
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # Swagger settings for Auth testing:
-
 SWAGGER_SETTINGS = {
     'SECURITY_DEFINITIONS': {
         'Bearer': {
@@ -262,3 +333,10 @@ SWAGGER_SETTINGS = {
         },
     },
 }
+
+# Add this to ensure logs are flushed immediately on Cloud Run
+if IS_PRODUCTION:
+    # Disable buffering for stdout/stderr
+    import sys
+    sys.stdout.reconfigure(line_buffering=True)
+    sys.stderr.reconfigure(line_buffering=True)

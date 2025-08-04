@@ -1,9 +1,20 @@
 # Defines how data from the GamePlaylist model is serialized into JSON for the frontend, double checking this today
+import logging
+import json
 from rest_framework import serializers
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from .models import GamePlaylist
 from django.contrib.auth.models import User
 from django.utils.translation import gettext_lazy as _
+
+# Configure structured logging for Cloud Run
+logger = logging.getLogger(__name__)
+
+# Set up structured logging format for Cloud Run
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(message)s',  # Cloud Run handles the formatting
+)
 
 
 class GamePlaylistSerializer(serializers.ModelSerializer):
@@ -25,11 +36,27 @@ class UserCreateSerializer(serializers.ModelSerializer):
         
     def validate_email(self, value): # Ensure email is unique and valid
         if User.objects.filter(email=value).exists():
+            logger.warning(
+                "User creation attempted with duplicate email",
+                extra={
+                    "severity": "WARNING",
+                    "email": value,
+                    "action": "user_create_validation"
+                }
+            )
             raise serializers.ValidationError("A user with this email already exists.")
         return value
         
     def validate_username(self, value): # Ensure username is unique and valid
         if User.objects.filter(username=value).exists():
+            logger.warning(
+                "User creation attempted with duplicate username",
+                extra={
+                    "severity": "WARNING",
+                    "username": value,
+                    "action": "user_create_validation"
+                }
+            )
             raise serializers.ValidationError("A user with this username already exists.")
         return value
         
@@ -37,25 +64,66 @@ class UserCreateSerializer(serializers.ModelSerializer):
         # Remove name from validated_data if present 
         name = validated_data.pop('name', '')
         
-        print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!1")
-        print(validated_data)
-        user = User.objects.create_user(
-            username=validated_data.get('username', None),
-            email=validated_data.get('email', None),
-            password=validated_data['password']
+        # Log the user creation attempt with structured data
+        logger.info(
+            "Creating new user",
+            extra={
+                "severity": "INFO",
+                "action": "user_create_start",
+                "username": validated_data.get('username'),
+                "email": validated_data.get('email'),
+                "has_name": bool(name)
+            }
         )
-        print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!2")
-        print(validated_data)
         
-        # Store name in first_name and last_name if provided
-        if name:
-            name_parts = name.split(' ', 1)
-            user.first_name = name_parts[0]
-            if len(name_parts) > 1:
-                user.last_name = name_parts[1]
-            user.save()
-        print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!3")
-        print(user)    
+        try:
+            user = User.objects.create_user(
+                username=validated_data.get('username', None),
+                email=validated_data.get('email', None),
+                password=validated_data['password']
+            )
+            
+            logger.info(
+                "User created successfully",
+                extra={
+                    "severity": "INFO",
+                    "action": "user_create_success",
+                    "user_id": user.id,
+                    "username": user.username
+                }
+            )
+            
+            # Store name in first_name and last_name if provided
+            if name:
+                name_parts = name.split(' ', 1)
+                user.first_name = name_parts[0]
+                if len(name_parts) > 1:
+                    user.last_name = name_parts[1]
+                user.save()
+                
+                logger.info(
+                    "User name fields updated",
+                    extra={
+                        "severity": "INFO",
+                        "action": "user_name_update",
+                        "user_id": user.id,
+                        "first_name": user.first_name,
+                        "last_name": user.last_name
+                    }
+                )
+                
+        except Exception as e:
+            logger.error(
+                "Failed to create user",
+                extra={
+                    "severity": "ERROR",
+                    "action": "user_create_failed",
+                    "error": str(e),
+                    "username": validated_data.get('username')
+                },
+                exc_info=True
+            )
+            raise
 
         return user
     
@@ -74,6 +142,13 @@ class ChangePasswordSerializer(serializers.Serializer):
     
     def validate_new_password2(self,value):
         if value != self.initial_data.get('new_password1'):
+            logger.warning(
+                "Password change attempted with mismatched passwords",
+                extra={
+                    "severity": "WARNING",
+                    "action": "password_change_validation"
+                }
+            )
             raise serializers.ValidationError("New passwords do not match.")
         return value
     
@@ -164,14 +239,42 @@ class EmailTokenObtainPairSerializer(TokenObtainPairSerializer):
         if email == "":
             email = None
         
+        # Log authentication attempt
+        logger.info(
+            "Authentication attempt",
+            extra={
+                "severity": "INFO",
+                "action": "auth_attempt",
+                "has_username": bool(username),
+                "has_email": bool(email),
+                "method": "email_token_obtain"
+            }
+        )
+        
         # Check if have either username or email
         if not username and not email:
+            logger.warning(
+                "Authentication failed - no credentials provided",
+                extra={
+                    "severity": "WARNING",
+                    "action": "auth_failed",
+                    "reason": "no_credentials"
+                }
+            )
             raise serializers.ValidationError({
                 "username": "Either username or email is required.",
                 "email": "Either username or email is required."
             })
         
         if not password:
+            logger.warning(
+                "Authentication failed - no password provided",
+                extra={
+                    "severity": "WARNING",
+                    "action": "auth_failed",
+                    "reason": "no_password"
+                }
+            )
             raise serializers.ValidationError({
                 "password": "This field is required."
             })
@@ -181,16 +284,52 @@ class EmailTokenObtainPairSerializer(TokenObtainPairSerializer):
             try:
                 user = User.objects.only('username').get(email=email)
                 attrs["username"] = user.username
+                logger.info(
+                    "User found by email",
+                    extra={
+                        "severity": "INFO",
+                        "action": "user_lookup_success",
+                        "method": "email",
+                        "user_id": user.id
+                    }
+                )
             except User.DoesNotExist:
+                logger.warning(
+                    "Authentication failed - email not found",
+                    extra={
+                        "severity": "WARNING",
+                        "action": "auth_failed",
+                        "reason": "email_not_found",
+                        "email": email
+                    }
+                )
                 raise serializers.ValidationError({
                     "email": "No user found with this email address."
                 })
                 
         elif username and not email:
             try:
-                User.objects.get(username=username)
+                user = User.objects.get(username=username)
                 attrs["username"] = username
+                logger.info(
+                    "User found by username",
+                    extra={
+                        "severity": "INFO",
+                        "action": "user_lookup_success",
+                        "method": "username",
+                        "user_id": user.id
+                    }
+                )
             except User.DoesNotExist:
+                logger.warning(
+                    "Authentication failed - username not found",
+                    extra={
+                        "severity": "WARNING",
+                        "action": "auth_failed",
+                        "reason": "username_not_found",
+                        "username": username
+                    }
+                )
                 raise serializers.ValidationError({
                     "username": "No user found with this username."
                 })
@@ -199,7 +338,26 @@ class EmailTokenObtainPairSerializer(TokenObtainPairSerializer):
             try:
                 user = User.objects.get(username=username, email=email)
                 attrs["username"] = username
+                logger.info(
+                    "User found by username and email",
+                    extra={
+                        "severity": "INFO",
+                        "action": "user_lookup_success",
+                        "method": "username_email",
+                        "user_id": user.id
+                    }
+                )
             except User.DoesNotExist:
+                logger.warning(
+                    "Authentication failed - username/email combination not found",
+                    extra={
+                        "severity": "WARNING",
+                        "action": "auth_failed",
+                        "reason": "combo_not_found",
+                        "username": username,
+                        "email": email
+                    }
+                )
                 raise serializers.ValidationError({
                     "username": "No user found with this username and email combination.",
                     "email": "No user found with this username and email combination."
@@ -213,4 +371,15 @@ class EmailTokenObtainPairSerializer(TokenObtainPairSerializer):
         token = super().get_token(user)
         token['email'] = user.email
         token['username'] = user.username
+        
+        logger.info(
+            "JWT token generated",
+            extra={
+                "severity": "INFO",
+                "action": "token_generated",
+                "user_id": user.id,
+                "username": user.username
+            }
+        )
+        
         return token
