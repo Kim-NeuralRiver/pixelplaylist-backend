@@ -185,6 +185,7 @@ class EmailTokenObtainPairSerializer(TokenObtainPairSerializer):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields['username'].required = False
+        self.fields['username'].allow_blank = True
         self.fields['email'].required = False
         # Remove username from required fields if it exists
           
@@ -364,6 +365,9 @@ class EmailTokenObtainPairSerializer(TokenObtainPairSerializer):
                 })
  
         attrs['password'] = password
+        
+        # Call parent validation but handle the case where username might be empty
+        # We've already set username in attrs if email was provided
         return super().validate(attrs)
     
     def get_token(self, user):
