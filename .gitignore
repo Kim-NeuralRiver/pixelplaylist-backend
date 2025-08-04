@@ -32,3 +32,4 @@ structure.txt
 .vscode/
 .DS_Store
 *.swp
+.ps1
