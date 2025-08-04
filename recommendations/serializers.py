@@ -179,12 +179,13 @@ class GameRecommendationInputSerializer(serializers.Serializer):
 
 class EmailTokenObtainPairSerializer(TokenObtainPairSerializer):
     email = serializers.EmailField(required=False, allow_blank=True) 
-    username = serializers.CharField(required=False, allow_blank=True, allow_empty=True, allow_null=True)
+    username = serializers.CharField(required=False, allow_blank=True)
 
     # Make username not required after init
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields['username'].required = False
+        self.fields['username'].allow_blank = True
         self.fields['email'].required = False
         # Remove username from required fields if it exists
           
@@ -364,6 +365,9 @@ class EmailTokenObtainPairSerializer(TokenObtainPairSerializer):
                 })
  
         attrs['password'] = password
+        
+        # Call parent validation but handle the case where username might be empty
+        # We've already set username in attrs if email was provided
         return super().validate(attrs)
     
     def get_token(self, user):
