@@ -11,6 +11,8 @@ from .services.igdb_service import IGDBServiceError
 from .services.price_service import ITADServiceError
 from .services.genre_service import GenreServiceError
 from .services.openai_service import OpenAIServiceError
+from recommendations.utils.slugify import slugify_title
+
 
 # Authentication Tests to test functionality:
 
@@ -591,4 +593,25 @@ class PlaylistTests(APITestCase):
         response = self.client.post(url, self.valid_playlist, format='json')
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
         
+# Utility Tests
+
+class UtilityTests(TestCase):
     
+    # Tests utility functions used in the app to help it function
+    # More can likely be added to these tests as needed, as of now we just have title slugification
+    
+    # First, test title slugification function (which converts game titles into url friendly slugs)
+    # Tests common cases, special characters, and edge cases
+    def test_slugify_title(self):
+                
+        # test w/ spaces
+        self.assertEqual(slugify_title("Final Fantasy I"), "final-fantasy-i")
+        
+        # test with special chars
+        self.assertEqual(slugify_title("Pokemon Mystery Dungeon: Blue Rescue Team"), "pokemon-mystery-dungeon-blue-rescue-team")
+        
+        # test with unicode characters 
+        self.assertEqual(slugify_title("Pokémon Heart Gold"), "pokemon-heart-gold")
+        
+        # Test with multiple spaces and hyphens
+        self.assertEqual(slugify_title("Star  Wars  -  The  Force  Unleashed"), "star-wars-the-force-unleashed")
