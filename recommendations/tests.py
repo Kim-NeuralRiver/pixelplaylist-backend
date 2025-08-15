@@ -411,3 +411,184 @@ class GameRecommendationTests(APITestCase):
         invalid_input['genres'] = []
         response = self.client.post(self.url, invalid_input, format='json')
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        
+
+class GenreListTests(APITestCase):
+# Test genre listing functionality
+    
+    @patch('recommendations.views.fetch_igdb_genres')
+    def test_genre_list_success(self, mock_fetch):
+        # Test to check genre listing runs successfully
+        # Runs a mock fetch to return sample genres
+        
+        mock_fetch.return_value = [
+            {'id': 4, 'name': 'Fighting'},
+            {'id': 5, 'name': 'Shooter'},
+            {'id': 12, 'name': 'RPG'}
+        ]
+        
+        # Make req
+        url = reverse('genre-list')
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data), 3)
+        self.assertEqual(response.data[0]['name'], 'Fighting')
+        
+    @patch('recommendations.views.fetch_igdb_genres')
+    def test_genre_list_error(self, mock_fetch):
+    # Mock genre fetch to raise and test genre list error handling
+        mock_fetch.side_effect = GenreServiceError("Genre list service unavailable")
+        
+        # Make req
+        url = reverse('genre-list')
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, status.HTTP_424_FAILED_DEPENDENCY)
+        self.assertIn('error', response.data)
+        
+class PlaylistTests(APITestCase):
+    # Test playlist functionality
+    
+    def setUp(self):
+        # Create a test user 
+        self.test_user = User.objects.create_user(
+            username='testuser',
+            email='test@example.com',
+            password='testpassword123'
+        )
+        self.client = APIClient()
+        
+        # login and retrieve token
+        url = reverse('token_obtain_pair')
+        data = {
+            'email': 'test@example.com',
+            'password': 'testpassword123'
+        }
+        
+        response = self.client.post(url, data, format='json')
+        self.token = response.data['access']
+        self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {self.token}')
+        
+        # Sample playlist data 
+        self.valid_playlist = {
+            'name': 'TestPlaylist',
+            'games': [
+                {
+                    'title': 'Test Game 1',
+                    'cover_url': 'https://example.com/cover1.jpg',
+                    'platform': ['PC'],
+                    'summary': 'This is test game 1',
+                    'genres': ['Action', 'Adventure'],
+                    'price': {
+                        'price': 19.99,
+                        'store': 'Steam',
+                        'currency': 'GBP'
+                    }
+                },
+                {
+                    'title': 'Test Game 2',
+                    'cover_url': 'https://example.com/cover2.jpg',
+                    'platform': ['PlayStation'],
+                    'summary': 'This is test game 2',
+                    'genres': ['RPG'],
+                    'price': {
+                        'price': 29.99,
+                        'store': 'PSN',
+                        'currency': 'GBP'
+                    }
+                } 
+            ]
+        }
+        
+    def test_create_playlist(self):
+        
+        # Test creating a new playlist
+        # Verifies that both response format and data are actually stored in DB
+        url = reverse('playlist-list-create')
+        response = self.client.post(url, self.valid_playlist, format='json')
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(response.data['name'], 'TestPlaylist')  
+        self.assertEqual(len(response.data['games']), 2)
+        self.assertEqual(GamePlaylist.objects.count(), 1)
+        
+    def test_get_playlist(self):
+        # Tests retrieving user playlist
+        # Ensures users can see saved content when return to app
+        # Create a playlist in DB first, then verify retrieval via API works
+        
+        # Playlist creation first
+        GamePlaylist.objects.create(
+            user=self.test_user,
+            name='Existing Playlist',
+            games=[{'title': 'Saved Game', 'platform': ['PC']}]
+        )
+        
+        # The, get playlists
+        url = reverse('playlist-list-create')
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data), 1)#
+        self.assertEqual(response.data[0]['name'], 'Existing Playlist')
+        
+    def test_playlist_user_isolation(self):
+        # Test users may only see their own playlists
+        # Test works by making playlists for multi users and verifying each only sees own data
+        
+        # Create another user and playlist
+        other_user = User.objects.create_user(
+            username='otheruser',
+            email='other@example.com',
+            password='otherpassword123'
+        )
+        GamePlaylist.objects.create(
+            user=other_user,
+            name="Other User's Playlist",
+            games=[{'title': 'Other Game', 'platform': ['Xbox']}]
+        )
+        
+        # Create a playlist for test user too
+        GamePlaylist.objects.create(
+            user=self.test_user,
+            name='Test User Playlist',
+            games=[{'title': 'My Game', 'platform': ['PC']}]
+        )
+        
+        # Get playlist as test user
+        url = reverse('playlist-list-create')
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data), 1) # Should see only test user playlist
+        self.assertEqual(response.data[0]['name'], 'Test User Playlist')
+        
+    def test_playlist_size_limit(self):
+        # Tests playlist size
+        # Validate that backend enforces constraints correctly to prevent resource overuse
+        
+        # Create playlist with too many games
+        too_many_games = self.valid_playlist.copy()
+        too_many_games['games'] = [
+            {'title': f'Game {i}', 'platform': ['PC']} for i in range(8)
+        ] 
+        
+        url = reverse('playlist-list-create')
+        response = self.client.post(url, too_many_games, format='json')
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('error', response.data)
+        
+    def test_unauthorized_playlist_access(self):
+
+        # Tests that unauthenticated users cannot access playlist endpoints.
+        # The test tries both GET and POST requests to verify comprehensive protection.
+        
+        # Clear credentials
+        self.client.credentials()
+        
+        # Try to access playlists without auth
+        url = reverse('playlist-list-create')
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+        
+        # Try to create playlist without auth
+        response = self.client.post(url, self.valid_playlist, format='json')
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+        
+    
